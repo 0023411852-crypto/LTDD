@@ -4,179 +4,289 @@ import '../../../models/article.dart';
 import '../../news/presentation/article_detail_screen.dart';
 import '../providers/favorites_provider.dart';
 
-class FavoritesScreen extends StatelessWidget {
+class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final fp = context.watch<FavoritesProvider>();
-    final favorites = fp.favorites;
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Đã lưu (${favorites.length})'),
-        actions: favorites.isNotEmpty
-            ? [
-                TextButton(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Xóa tất cả'),
-                        content: const Text(
-                            'Bạn có chắc muốn xóa toàn bộ bài đã lưu?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Hủy'),
-                          ),
-                          FilledButton(
-                            onPressed: () {
-                              for (final a in List<Article>.from(favorites)) {
-                                fp.toggleFavorite(a);
-                              }
-                              Navigator.pop(ctx);
-                            },
-                            child: const Text('Xóa'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  child: const Text('Xóa tất cả'),
-                ),
-                const SizedBox(width: 4),
-              ]
-            : null,
-      ),
-      body: favorites.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.bookmark_outline_rounded,
-                      size: 56, color: cs.outline),
-                  const SizedBox(height: 16),
-                  Text('Chưa có bài viết nào được lưu',
-                      style: tt.titleMedium),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Nhấn ♡ trong bài báo để lưu lại đọc sau.',
-                    style: TextStyle(
-                        fontSize: 13, color: cs.onSurfaceVariant),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          : ListView.separated(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: favorites.length,
-              separatorBuilder: (_, __) =>
-                  Divider(height: 1, color: cs.outlineVariant),
-              itemBuilder: (context, index) {
-                final article = favorites[index];
-                return _FavoriteRow(article: article, provider: fp);
-              },
-            ),
-    );
-  }
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
-class _FavoriteRow extends StatelessWidget {
-  final Article article;
-  final FavoritesProvider provider;
-
-  const _FavoriteRow({required this.article, required this.provider});
+class _FavoritesScreenState extends State<FavoritesScreen> {
+  int _selectedTab = 0; // 0: Tin tức, 1: Địa điểm
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final favoritesProvider = context.watch<FavoritesProvider>();
+    final favorites = favoritesProvider.favorites;
 
-    return Dismissible(
-      key: ValueKey(article.link),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: cs.errorContainer,
-        child: Icon(Icons.delete_outline_rounded, color: cs.error),
-      ),
-      onDismissed: (_) => provider.toggleFavorite(article),
-      child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => ArticleDetailScreen(article: article)),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Yêu thích',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: article.imageUrl != null
-                    ? Image.network(
-                        article.imageUrl!,
-                        width: 80,
-                        height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 80,
-                          height: 60,
-                          color: cs.surfaceContainerHighest,
-                          child: Icon(Icons.image_outlined,
-                              color: cs.outline, size: 20),
-                        ),
-                      )
-                    : Container(
-                        width: 80,
-                        height: 60,
-                        color: cs.surfaceContainerHighest,
-                        child: Icon(Icons.image_outlined,
-                            color: cs.outline, size: 20),
+      ),
+      body: Column(
+        children: [
+          // 2 Tabs chuẩn Mockup: Tin tức | Địa điểm
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedTab = 0),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: _selectedTab == 0
+                            ? const Color(0xFF1E60F2)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      article.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600, height: 1.35),
+                      child: Center(
+                        child: Text(
+                          'Tin tức (${favorites.length})',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _selectedTab == 0
+                                ? Colors.white
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      article.source,
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: cs.primary,
-                          fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedTab = 1),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: _selectedTab == 1
+                            ? const Color(0xFF1E60F2)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Địa điểm',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _selectedTab == 1
+                                ? Colors.white
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
                     ),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+          // Nội dung tab
+          Expanded(
+            child: _selectedTab == 0
+                ? _buildNewsFavorites(context, favoritesProvider, favorites)
+                : _buildLocationFavorites(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewsFavorites(BuildContext context,
+      FavoritesProvider favoritesProvider, List<Article> favorites) {
+    if (favorites.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E60F2).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.favorite_rounded,
+                  size: 56,
+                  color: Color(0xFF1E60F2),
                 ),
               ),
-              IconButton(
-                icon:
-                    Icon(Icons.bookmark_remove_outlined, color: cs.error),
-                tooltip: 'Bỏ lưu',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => provider.toggleFavorite(article),
+              const SizedBox(height: 20),
+              const Text(
+                'Chưa có bài viết yêu thích',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Nhấn vào biểu tượng trái tim khi đọc bài báo để lưu lại đọc bất cứ lúc nào.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
             ],
           ),
         ),
-      ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: favorites.length,
+      itemBuilder: (context, index) {
+        final article = favorites[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                article.imageUrl ??
+                    'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400',
+                width: 80,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 80,
+                  height: 60,
+                  color: Colors.grey.shade200,
+                  child: const Icon(Icons.image, color: Colors.grey),
+                ),
+              ),
+            ),
+            title: Text(
+              article.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            subtitle: Text(
+              article.source,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF1E60F2),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.favorite, color: Color(0xFFEF4444)),
+              tooltip: 'Bỏ lưu',
+              onPressed: () {
+                favoritesProvider.toggleFavorite(article);
+              },
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ArticleDetailScreen(article: article),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLocationFavorites(BuildContext context) {
+    final List<Map<String, String>> locations = [
+      {'name': 'Hà Nội', 'temp': '28°C', 'desc': 'Có mây'},
+      {'name': 'TP. Hồ Chí Minh', 'temp': '32°C', 'desc': 'Nắng nóng'},
+      {'name': 'Đà Nẵng', 'temp': '29°C', 'desc': 'Nắng nhẹ'},
+    ];
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: locations.length,
+      itemBuilder: (context, index) {
+        final loc = locations[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📍 ${loc['name']}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    loc['desc']!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                loc['temp']!,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E60F2),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
