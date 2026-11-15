@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/article.dart';
-import '../../../models/weather.dart';
 import '../../news/presentation/article_detail_screen.dart';
 import '../../news/providers/news_provider.dart';
 import '../../search/presentation/search_screen.dart';

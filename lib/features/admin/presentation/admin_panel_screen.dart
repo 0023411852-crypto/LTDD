@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/article.dart';
-import '../../../services/news_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../favorites/providers/favorites_provider.dart';
 import '../../news/providers/news_provider.dart';
@@ -235,7 +234,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final categoryCount = news.categories.length;
     final favCount = fav.favorites.length;
     final temp = weather.weather?.temperature.round();
-    final city = weather.weather?.city ?? 'Hà Nội';
+    final city = weather.weather?.cityName ?? 'Hà Nội';
 
     return ListView(
       padding: const EdgeInsets.all(16),
