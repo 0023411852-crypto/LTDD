@@ -842,8 +842,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   void _showAddArticleDialog(BuildContext context) {
     final titleCtrl = TextEditingController();
+    final subtitleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final authorCtrl = TextEditingController(text: 'Ban Biên Tập');
+    final imageUrlCtrl = TextEditingController();
+    final linkCtrl = TextEditingController();
+    String selectedCatLabel = 'Thời sự';
+    final catOptions = ['Thời sự', 'Công nghệ', 'Kinh tế', 'Thể thao', 'Thế giới', 'Giải trí', 'Sức khỏe'];
 
     showModalBottomSheet(
       context: context,
@@ -852,107 +857,282 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Đăng bài viết mới vào App',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                  ),
-                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
-                ],
-              ),
-              const Divider(),
-              const SizedBox(height: 10),
-
-              const Text('Tiêu đề bài viết *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: titleCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Nhập tiêu đề tin tức nổi bật...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              const Text('Nội dung tóm tắt *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: descCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Mô tả chi tiết nội dung tin tức...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              const Text('Nguồn / Tác giả', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: authorCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Ban Biên Tập, Tin Tức 24h...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              ElevatedButton(
-                onPressed: () {
-                  if (titleCtrl.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Vui lòng nhập tiêu đề bài viết'), backgroundColor: Colors.red),
-                    );
-                    return;
-                  }
-
-                  final newTitle = titleCtrl.text.trim();
-                  final newDesc = descCtrl.text.trim();
-                  final newAuthor = authorCtrl.text.trim().isEmpty ? 'Admin' : authorCtrl.text.trim();
-
-                  // Thêm trực tiếp vào NewsProvider thật
-                  context.read<NewsProvider>().addArticle(
-                        Article(
-                          title: newTitle,
-                          link: 'https://news.google.com',
-                          description: newDesc.isNotEmpty ? newDesc : newTitle,
-                          source: newAuthor,
-                          publishedAt: DateTime.now(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx2).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Header ──
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1654F0).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.post_add_rounded, color: Color(0xFF1654F0), size: 20),
                         ),
-                      );
-
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Đã đăng bài viết thành công! Bài viết đã xuất hiện trên toàn bộ ứng dụng.'),
-                      backgroundColor: Colors.green,
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Đăng bài viết mới',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        ),
+                      ],
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1654F0),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx2)),
+                  ],
                 ),
-                child: const Text('Đăng bài viết ngay', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-            ],
+                const SizedBox(height: 4),
+                const Text('Bài viết sẽ hiển thị ngay trên toàn bộ ứng dụng', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                const Divider(height: 20),
+
+                // ── Tiêu đề ──
+                _buildDialogLabel('Tiêu đề bài viết', isRequired: true),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: titleCtrl,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  decoration: _dialogInputDeco('Nhập tiêu đề tin tức nổi bật...', Icons.title_rounded),
+                ),
+                const SizedBox(height: 12),
+
+                // ── Phụ đề ──
+                _buildDialogLabel('Phụ đề / Dòng mô tả ngắn'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: subtitleCtrl,
+                  decoration: _dialogInputDeco('Dòng mô tả phụ bên dưới tiêu đề...', Icons.short_text_rounded),
+                ),
+                const SizedBox(height: 12),
+
+                // ── Danh mục ──
+                _buildDialogLabel('Danh mục / Chuyên mục'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: catOptions.map((cat) {
+                    final isSel = selectedCatLabel == cat;
+                    return GestureDetector(
+                      onTap: () => setModalState(() => selectedCatLabel = cat),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSel ? const Color(0xFF1654F0) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: isSel ? const Color(0xFF1654F0) : const Color(0xFFE2E8F0)),
+                        ),
+                        child: Text(
+                          cat,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: isSel ? Colors.white : const Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+
+                // ── URL Ảnh đại diện ──
+                _buildDialogLabel('URL Ảnh đại diện (thumbnail)'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: imageUrlCtrl,
+                  keyboardType: TextInputType.url,
+                  decoration: _dialogInputDeco('https://example.com/image.jpg', Icons.image_rounded),
+                ),
+                // Preview ảnh
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: imageUrlCtrl,
+                  builder: (_, val, __) {
+                    final url = val.text.trim();
+                    if (url.isEmpty || !url.startsWith('http')) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          url,
+                          height: 140,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.broken_image_outlined, color: Color(0xFFEF4444), size: 18),
+                                SizedBox(width: 6),
+                                Text('URL ảnh không hợp lệ hoặc không tải được', style: TextStyle(fontSize: 12, color: Color(0xFFEF4444))),
+                              ],
+                            ),
+                          ),
+                          loadingBuilder: (_, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 140,
+                              color: const Color(0xFFF1F5F9),
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // ── Nội dung tóm tắt ──
+                _buildDialogLabel('Nội dung tóm tắt', isRequired: true),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  decoration: _dialogInputDeco('Mô tả chi tiết nội dung tin tức...', Icons.notes_rounded),
+                ),
+                const SizedBox(height: 12),
+
+                // ── Nguồn / Tác giả ──
+                _buildDialogLabel('Nguồn / Tác giả'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: authorCtrl,
+                  decoration: _dialogInputDeco('Ban Biên Tập, Tin Tức 24h...', Icons.person_rounded),
+                ),
+                const SizedBox(height: 12),
+
+                // ── Link bài gốc ──
+                _buildDialogLabel('Link bài viết gốc (tuỳ chọn)'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: linkCtrl,
+                  keyboardType: TextInputType.url,
+                  decoration: _dialogInputDeco('https://vnexpress.net/...', Icons.link_rounded),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Nút đăng ──
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (titleCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng nhập tiêu đề bài viết'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+
+                    final newTitle = titleCtrl.text.trim();
+                    final newDesc = [
+                      if (subtitleCtrl.text.trim().isNotEmpty) subtitleCtrl.text.trim(),
+                      if (descCtrl.text.trim().isNotEmpty) descCtrl.text.trim(),
+                    ].join('\n\n').isNotEmpty
+                        ? [
+                            if (subtitleCtrl.text.trim().isNotEmpty) subtitleCtrl.text.trim(),
+                            if (descCtrl.text.trim().isNotEmpty) descCtrl.text.trim(),
+                          ].join('\n\n')
+                        : newTitle;
+                    final newAuthor = authorCtrl.text.trim().isEmpty
+                        ? 'Admin / $selectedCatLabel'
+                        : '${authorCtrl.text.trim()} • $selectedCatLabel';
+                    final imgUrl = imageUrlCtrl.text.trim().isNotEmpty ? imageUrlCtrl.text.trim() : null;
+                    final link = linkCtrl.text.trim().isNotEmpty ? linkCtrl.text.trim() : 'https://news.google.com';
+
+                    context.read<NewsProvider>().addArticle(
+                          Article(
+                            title: newTitle,
+                            link: link,
+                            description: newDesc,
+                            imageUrl: imgUrl,
+                            source: newAuthor,
+                            publishedAt: DateTime.now(),
+                          ),
+                        );
+
+                    Navigator.pop(ctx2);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text('Đã đăng bài "$newTitle" thành công!')),
+                          ],
+                        ),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1654F0),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                  label: const Text('Đăng bài viết ngay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Helper: label cho form
+  Widget _buildDialogLabel(String text, {bool isRequired = false}) {
+    return Row(
+      children: [
+        Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+        if (isRequired) ...[
+          const SizedBox(width: 4),
+          const Text('*', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+        ],
+      ],
+    );
+  }
+
+  // Helper: decoration cho TextFiend trong form
+  InputDecoration _dialogInputDeco(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFCBD5E1)),
+      prefixIcon: Icon(icon, size: 18, color: const Color(0xFF94A3B8)),
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF1654F0), width: 1.5),
       ),
     );
   }
@@ -963,104 +1143,245 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildCategoryManagementTab(NewsProvider news) {
     final categories = news.categories;
     final selectedCat = news.selectedCategory;
+    final isLoading = news.status == NewsStatus.loading;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Danh mục RSS chính thức (${categories.length})',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('Đồng bộ từ RSS', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2))),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
+    // Map icon cho từng danh mục
+    IconData _catIcon(String id) {
+      switch (id) {
+        case 'moi-nhat': return Icons.fiber_new_rounded;
+        case 'thoi-su': return Icons.public_rounded;
+        case 'the-gioi': return Icons.language_rounded;
+        case 'kinh-doanh': return Icons.trending_up_rounded;
+        case 'cong-nghe': return Icons.laptop_mac_rounded;
+        case 'the-thao': return Icons.sports_soccer_rounded;
+        case 'giai-tri': return Icons.movie_filter_rounded;
+        case 'suc-khoe': return Icons.favorite_rounded;
+        case 'tuoi-tre': return Icons.newspaper_rounded;
+        case 'thanh-nien': return Icons.article_rounded;
+        default: return Icons.category_rounded;
+      }
+    }
 
-        ...categories.map((cat) {
-          final isSelected = selectedCat.id == cat.id;
+    Color _catColor(String id) {
+      switch (id) {
+        case 'moi-nhat': return const Color(0xFFEF4444);
+        case 'thoi-su': return const Color(0xFF3B82F6);
+        case 'the-gioi': return const Color(0xFF8B5CF6);
+        case 'kinh-doanh': return const Color(0xFFF59E0B);
+        case 'cong-nghe': return const Color(0xFF06B6D4);
+        case 'the-thao': return const Color(0xFF10B981);
+        case 'giai-tri': return const Color(0xFFEC4899);
+        case 'suc-khoe': return const Color(0xFFEF4444);
+        case 'tuoi-tre': return const Color(0xFFEA580C);
+        case 'thanh-nien': return const Color(0xFF64748B);
+        default: return const Color(0xFF1E60F2);
+      }
+    }
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? const Color(0xFF1E60F2) : const Color(0xFFE2E8F0),
-                width: isSelected ? 1.8 : 1.0,
-              ),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF1E60F2) : const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.category_rounded,
-                  color: isSelected ? Colors.white : const Color(0xFF1E60F2),
-                  size: 22,
-                ),
-              ),
-              title: Row(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
+      body: categories.isEmpty && !isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    cat.label,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF0F172A)),
+                  const Icon(Icons.category_outlined, size: 60, color: Color(0xFFCBD5E1)),
+                  const SizedBox(height: 14),
+                  const Text('Chưa tải được danh mục', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                  const SizedBox(height: 8),
+                  const Text('Kiểm tra kết nối internet', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () => news.fetchNews(),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Thử lại'),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1654F0), foregroundColor: Colors.white),
                   ),
-                  if (isSelected) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text('ĐANG XEM', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                  ],
                 ],
               ),
-              subtitle: Text(
-                'Nguồn: ${cat.source} • URL: ${cat.rssUrl}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-              ),
-              trailing: ElevatedButton(
-                onPressed: () async {
-                  await news.selectCategory(cat);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Đã chọn chuyên mục: ${cat.label}'), backgroundColor: Colors.green),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // ── Header ──
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${categories.length} danh mục RSS',
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        ),
+                        const Text('Chọn chuyên mục để ứng dụng hiển thị tin tức', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                      ],
+                    ),
+                    if (isLoading)
+                      const SizedBox(
+                        width: 24, height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1654F0)),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
+                        child: const Text('Nguồn: RSS', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2))),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+
+                // ── Banner hướng dẫn ──
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16, top: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF86EFAC)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: Color(0xFF16A34A), size: 18),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Nhấn "Chuyển sang" để ứng dụng tải và hiển thị tin tức từ chuyên mục đó.',
+                          style: TextStyle(fontSize: 12.5, color: Color(0xFF15803D)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Danh sách danh mục ──
+                ...categories.map((cat) {
+                  final isSelected = selectedCat.id == cat.id;
+                  final color = _catColor(cat.id);
+
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? color.withOpacity(0.06) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? color : const Color(0xFFE2E8F0),
+                        width: isSelected ? 1.8 : 1.0,
+                      ),
+                      boxShadow: isSelected
+                          ? [BoxShadow(color: color.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 4))]
+                          : [const BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        await news.selectCategory(cat);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                                const SizedBox(width: 8),
+                                Text('Đã chuyển sang chuyên mục "${cat.label}"'),
+                              ],
+                            ),
+                            backgroundColor: color,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            // Icon danh mục
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: isSelected ? color : color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(_catIcon(cat.id), color: isSelected ? Colors.white : color, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+
+                            // Thông tin
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        cat.label,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15,
+                                          color: isSelected ? color : const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      if (isSelected) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+                                          child: const Text('ĐANG HIỂN THỊ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    cat.source,
+                                    style: TextStyle(fontSize: 12, color: isSelected ? color.withOpacity(0.8) : const Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    cat.rssUrl,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Nút chọn / đang chọn
+                            const SizedBox(width: 10),
+                            isSelected
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+                                  )
+                                : Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: color.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      'Chuyển',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      ),
+                    ),
                   );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isSelected ? const Color(0xFF10B981) : const Color(0xFF1E60F2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
-                child: Text(
-                  isSelected ? 'Đang chọn' : 'Chọn đọc',
-                  style: const TextStyle(fontSize: 12, color: Colors.white),
-                ),
-              ),
+                }).toList(),
+
+                const SizedBox(height: 8),
+              ],
             ),
-          );
-        }).toList(),
-      ],
     );
   }
 
