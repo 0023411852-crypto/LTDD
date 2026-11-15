@@ -63,9 +63,9 @@ class _MainNavScreenState extends State<MainNavScreen> {
             label: 'Thời tiết',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.bookmark_outline_rounded),
-            selectedIcon: Icon(Icons.bookmark_rounded, color: cs.primary),
-            label: 'Đã lưu',
+            icon: const Icon(Icons.favorite_outline_rounded),
+            selectedIcon: Icon(Icons.favorite_rounded, color: cs.primary),
+            label: 'Yêu thích',
           ),
           NavigationDestination(
             icon: const Icon(Icons.person_outline_rounded),
