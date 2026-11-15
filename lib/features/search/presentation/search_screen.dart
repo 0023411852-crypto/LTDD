@@ -18,13 +18,13 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Article> _searchResults = [];
   bool _hasSearched = false;
 
-  final List<Map<String, String>> _trendingTopics = [
-    {'title': 'Tin nóng', 'icon': '🔥'},
-    {'title': 'Thời tiết hôm nay', 'icon': '☀️'},
-    {'title': 'Bóng đá', 'icon': '⚽'},
-    {'title': 'Công nghệ AI', 'icon': '💻'},
-    {'title': 'Kinh tế số', 'icon': '📈'},
-    {'title': 'Giao thông', 'icon': '🚗'},
+  final List<String> _trendingTopics = [
+    'Thời tiết hôm nay',
+    'Bóng đá',
+    'Công nghệ AI',
+    'Kinh tế',
+    'Giao thông',
+    'Giáo dục',
   ];
 
   @override
@@ -73,32 +73,24 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
-          onPressed: () => Navigator.pop(context),
-        ),
         titleSpacing: 0,
-        title: Container(
-          height: 42,
-          margin: const EdgeInsets.only(right: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
-          ),
+        title: Padding(
+          padding: const EdgeInsets.only(right: 16),
           child: TextField(
             controller: _searchController,
             textInputAction: TextInputAction.search,
+            autofocus: true,
             onSubmitted: _performSearch,
             decoration: InputDecoration(
-              hintText: 'Nhập từ khóa tìm kiếm...',
-              hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-              prefixIcon: const Icon(Icons.search_rounded,
-                  color: Color(0xFF1E60F2), size: 20),
+              hintText: 'Tìm kiếm tin tức...',
+              filled: true,
+              fillColor: cs.surfaceContainerHighest,
+              prefixIcon: const Icon(Icons.search_rounded, size: 20),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
@@ -111,8 +103,20 @@ class _SearchScreenState extends State<SearchScreen> {
                       },
                     )
                   : null,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide(color: cs.primary, width: 1.5),
+              ),
             ),
           ),
         ),
@@ -123,12 +127,11 @@ class _SearchScreenState extends State<SearchScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 // 1. Xu hướng tìm kiếm
-                const Text(
+                Text(
                   'Từ khóa phổ biến',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                  style: tt.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -136,33 +139,14 @@ class _SearchScreenState extends State<SearchScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: _trendingTopics.map((item) {
-                    return InkWell(
-                      onTap: () => _performSearch(item['title']!),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(item['icon']!,
-                                style: const TextStyle(fontSize: 14)),
-                            const SizedBox(width: 6),
-                            Text(
-                              item['title']!,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF334155),
-                              ),
-                            ),
-                          ],
-                        ),
+                    return ActionChip(
+                      label: Text(item),
+                      onPressed: () => _performSearch(item),
+                      side: BorderSide(color: cs.outlineVariant),
+                      backgroundColor: cs.surface,
+                      labelStyle: TextStyle(
+                        fontSize: 13,
+                        color: cs.onSurfaceVariant,
                       ),
                     );
                   }).toList(),
@@ -174,45 +158,37 @@ class _SearchScreenState extends State<SearchScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Lịch sử tìm kiếm',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                        style: tt.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: _clearHistory,
-                        child: const Text(
+                      TextButton(
+                        onPressed: _clearHistory,
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: Text(
                           'Xóa tất cả',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF1E60F2),
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(fontSize: 13, color: cs.primary),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   ..._history.map((term) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.history_rounded,
-                            color: Colors.grey, size: 20),
-                        title: Text(term,
-                            style: const TextStyle(fontSize: 14)),
-                        trailing: const Icon(Icons.north_west_rounded,
-                            size: 16, color: Colors.grey),
-                        onTap: () => _performSearch(term),
-                      ),
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.history_rounded,
+                          color: cs.onSurfaceVariant, size: 20),
+                      title: Text(term, style: const TextStyle(fontSize: 14)),
+                      trailing: Icon(Icons.north_west_rounded,
+                          size: 16, color: cs.outline),
+                      onTap: () => _performSearch(term),
                     );
                   }),
                 ],
@@ -222,25 +198,38 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults() {
+    final cs = Theme.of(context).colorScheme;
+
     if (_searchResults.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.search_off_rounded, size: 64, color: Colors.grey),
-            const SizedBox(height: 12),
-            Text(
-              'Không tìm thấy kết quả cho "${_searchController.text}"',
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search_off_rounded, size: 56, color: cs.outline),
+              const SizedBox(height: 16),
+              Text(
+                'Không tìm thấy kết quả',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Không có bài báo nào phù hợp với từ khóa "${_searchController.text}".',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: _searchResults.length,
+      separatorBuilder: (_, __) =>
+          Divider(height: 1, color: cs.outlineVariant),
       itemBuilder: (context, index) {
         final article = _searchResults[index];
         return InkWell(
@@ -252,32 +241,34 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-            ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    article.imageUrl ??
-                        'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400',
-                    width: 90,
-                    height: 70,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 90,
-                      height: 70,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.image, color: Colors.grey),
-                    ),
-                  ),
+                  child: article.imageUrl != null
+                      ? Image.network(
+                          article.imageUrl!,
+                          width: 88,
+                          height: 66,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 88,
+                            height: 66,
+                            color: cs.surfaceContainerHighest,
+                            child: Icon(Icons.image_outlined,
+                                color: cs.outline, size: 24),
+                          ),
+                        )
+                      : Container(
+                          width: 88,
+                          height: 66,
+                          color: cs.surfaceContainerHighest,
+                          child: Icon(Icons.image_outlined,
+                              color: cs.outline, size: 24),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -288,19 +279,21 @@ class _SearchScreenState extends State<SearchScreen> {
                         article.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         article.source,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF1E60F2),
-                          fontWeight: FontWeight.w600,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: cs.primary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],

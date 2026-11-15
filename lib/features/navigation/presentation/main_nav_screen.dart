@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import '../../../utils/app_colors.dart';
 import '../../favorites/presentation/favorites_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../news/presentation/news_list_screen.dart';
@@ -18,6 +17,8 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     final List<Widget> screens = [
       HomeScreen(
         onNavigateToNews: () => setState(() => _currentIndex = 1),
@@ -42,33 +43,33 @@ class _MainNavScreenState extends State<MainNavScreen> {
             _currentIndex = index;
           });
         },
-        backgroundColor: Colors.white,
-        indicatorColor: AppColors.primary.withOpacity(0.15),
-        elevation: 8,
-        destinations: const [
+        backgroundColor: cs.surface,
+        indicatorColor: cs.primaryContainer,
+        elevation: 1,
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home, color: AppColors.primary),
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: cs.primary),
             label: 'Trang chủ',
           ),
           NavigationDestination(
-            icon: Icon(Icons.article_outlined),
-            selectedIcon: Icon(Icons.article, color: AppColors.primary),
+            icon: const Icon(Icons.article_outlined),
+            selectedIcon: Icon(Icons.article_rounded, color: cs.primary),
             label: 'Tin tức',
           ),
           NavigationDestination(
-            icon: Icon(Icons.cloud_outlined),
-            selectedIcon: Icon(Icons.cloud, color: AppColors.primary),
+            icon: const Icon(Icons.cloud_outlined),
+            selectedIcon: Icon(Icons.cloud_rounded, color: cs.primary),
             label: 'Thời tiết',
           ),
           NavigationDestination(
-            icon: Icon(Icons.favorite_outline),
-            selectedIcon: Icon(Icons.favorite, color: AppColors.primary),
-            label: 'Yêu thích',
+            icon: const Icon(Icons.bookmark_outline_rounded),
+            selectedIcon: Icon(Icons.bookmark_rounded, color: cs.primary),
+            label: 'Đã lưu',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: AppColors.primary),
+            icon: const Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded, color: cs.primary),
             label: 'Cá nhân',
           ),
         ],

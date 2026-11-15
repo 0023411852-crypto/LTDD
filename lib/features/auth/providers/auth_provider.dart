@@ -33,6 +33,15 @@ class AuthProvider extends ChangeNotifier {
 
   String get email => _user?.email ?? '';
 
+  bool get isAdmin {
+    if (_user == null) return false;
+    final userEmail = _user!.email?.toLowerCase() ?? '';
+    return userEmail.contains('admin') ||
+        userEmail == 'linh@admin.com' ||
+        userEmail == 'admin@gmail.com' ||
+        userEmail.endsWith('@admin.portal');
+  }
+
   AuthProvider() {
     try {
       _auth = FirebaseAuth.instance;

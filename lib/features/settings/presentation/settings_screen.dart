@@ -10,254 +10,173 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _breakingNewsNotification = true;
-  bool _weatherForecastNotification = true;
-  bool _promotionNotification = false;
+  bool _breakingNewsNotif = true;
+  bool _weatherNotif = true;
+  bool _promoNotif = false;
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
-    final isDark = themeProvider.themeMode == ThemeMode.dark;
+    final tp = context.watch<ThemeProvider>();
+    final isDark = tp.themeMode == ThemeMode.dark;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Cài đặt',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-          ),
-        ),
+        title: const Text('Cài đặt'),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          // Section 1: Tài khoản
-          _buildSectionHeader('Tài khoản'),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              children: [
-                _buildActionItem(
-                  icon: Icons.shield_outlined,
-                  title: 'Bảo mật tài khoản',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey),
-                  onTap: () {},
-                ),
-                _buildDivider(),
-                _buildActionItem(
-                  icon: Icons.language_rounded,
-                  title: 'Ngôn ngữ',
-                  trailing: const Text(
-                    'Tiếng Việt >',
+          // ── Giao diện ─────────────────────────────────────────────
+          _SectionHeader(label: 'Hiển thị'),
+          _SettingsCard(
+            children: [
+              SwitchListTile(
+                value: isDark,
+                onChanged: (val) => tp.setThemeMode(
+                    val ? ThemeMode.dark : ThemeMode.light),
+                secondary: const Icon(Icons.dark_mode_outlined),
+                title: const Text('Giao diện tối'),
+                dense: true,
+              ),
+              Divider(height: 1, color: cs.outlineVariant),
+              ListTile(
+                leading: const Icon(Icons.language_outlined),
+                title: const Text('Ngôn ngữ'),
+                trailing: Text('Tiếng Việt',
                     style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF1E60F2),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  onTap: () {},
-                ),
-                _buildDivider(),
-                _buildActionItem(
-                  icon: Icons.palette_outlined,
-                  title: 'Giao diện',
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isDark ? 'Tối' : 'Sáng',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF1E60F2),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Switch(
-                        value: isDark,
-                        activeColor: const Color(0xFF1E60F2),
-                        onChanged: (val) {
-                          themeProvider.setThemeMode(
-                              val ? ThemeMode.dark : ThemeMode.light);
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () {},
-                ),
-              ],
-            ),
+                        fontSize: 13, color: cs.onSurfaceVariant)),
+                dense: true,
+                onTap: () {},
+              ),
+            ],
           ),
           const SizedBox(height: 20),
 
-          // Section 2: Thông báo
-          _buildSectionHeader('Thông báo'),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              children: [
-                _buildSwitchItem(
-                  icon: Icons.notifications_active_outlined,
-                  title: 'Tin tức nổi bật',
-                  value: _breakingNewsNotification,
-                  onChanged: (val) =>
-                      setState(() => _breakingNewsNotification = val),
-                ),
-                _buildDivider(),
-                _buildSwitchItem(
-                  icon: Icons.wb_sunny_outlined,
-                  title: 'Dự báo thời tiết',
-                  value: _weatherForecastNotification,
-                  onChanged: (val) =>
-                      setState(() => _weatherForecastNotification = val),
-                ),
-                _buildDivider(),
-                _buildSwitchItem(
-                  icon: Icons.card_giftcard_rounded,
-                  title: 'Khuyến mại',
-                  value: _promotionNotification,
-                  onChanged: (val) =>
-                      setState(() => _promotionNotification = val),
-                ),
-              ],
-            ),
+          // ── Thông báo ─────────────────────────────────────────────
+          _SectionHeader(label: 'Thông báo'),
+          _SettingsCard(
+            children: [
+              SwitchListTile(
+                value: _breakingNewsNotif,
+                onChanged: (v) =>
+                    setState(() => _breakingNewsNotif = v),
+                secondary: const Icon(Icons.newspaper_outlined),
+                title: const Text('Tin tức nổi bật'),
+                dense: true,
+              ),
+              Divider(height: 1, color: cs.outlineVariant),
+              SwitchListTile(
+                value: _weatherNotif,
+                onChanged: (v) =>
+                    setState(() => _weatherNotif = v),
+                secondary: const Icon(Icons.wb_sunny_outlined),
+                title: const Text('Dự báo thời tiết'),
+                dense: true,
+              ),
+              Divider(height: 1, color: cs.outlineVariant),
+              SwitchListTile(
+                value: _promoNotif,
+                onChanged: (v) =>
+                    setState(() => _promoNotif = v),
+                secondary: const Icon(Icons.card_giftcard_outlined),
+                title: const Text('Khuyến mại'),
+                dense: true,
+              ),
+            ],
           ),
           const SizedBox(height: 20),
 
-          // Section 3: Về ứng dụng
-          _buildSectionHeader('Về ứng dụng'),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              children: [
-                _buildActionItem(
-                  icon: Icons.info_outline_rounded,
-                  title: 'Giới thiệu ứng dụng',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey),
-                  onTap: () {},
+          // ── Tài khoản ─────────────────────────────────────────────
+          _SectionHeader(label: 'Tài khoản'),
+          _SettingsCard(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.shield_outlined),
+                title: const Text('Bảo mật'),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                dense: true,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Chưa triển khai')),
                 ),
-                _buildDivider(),
-                _buildActionItem(
-                  icon: Icons.lock_outline_rounded,
-                  title: 'Chính sách bảo mật',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey),
-                  onTap: () {},
-                ),
-                _buildDivider(),
-                _buildActionItem(
-                  icon: Icons.description_outlined,
-                  title: 'Điều khoản sử dụng',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey),
-                  onTap: () {},
-                ),
-                _buildDivider(),
-                _buildActionItem(
-                  icon: Icons.app_settings_alt_outlined,
-                  title: 'Phiên bản',
-                  trailing: const Text(
-                    '1.0.0',
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // ── Về ứng dụng ───────────────────────────────────────────
+          _SectionHeader(label: 'Về ứng dụng'),
+          _SettingsCard(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.info_outline_rounded),
+                title: const Text('Phiên bản'),
+                trailing: Text('1.0.0',
                     style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onTap: () {},
-                ),
-              ],
-            ),
+                        fontSize: 13, color: cs.onSurfaceVariant)),
+                dense: true,
+                onTap: () {},
+              ),
+              Divider(height: 1, color: cs.outlineVariant),
+              ListTile(
+                leading: const Icon(Icons.lock_outline_rounded),
+                title: const Text('Chính sách bảo mật'),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                dense: true,
+                onTap: () {},
+              ),
+              Divider(height: 1, color: cs.outlineVariant),
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('Điều khoản sử dụng'),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                dense: true,
+                onTap: () {},
+              ),
+            ],
           ),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  Widget _buildSectionHeader(String title) {
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: Color(0xFF0F172A),
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
     );
   }
+}
 
-  Widget _buildActionItem({
-    required IconData icon,
-    required String title,
-    required Widget trailing,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF1E60F2), size: 22),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF334155),
-        ),
+class _SettingsCard extends StatelessWidget {
+  final List<Widget> children;
+  const _SettingsCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant),
       ),
-      trailing: trailing,
-      onTap: onTap,
+      child: Column(children: children),
     );
-  }
-
-  Widget _buildSwitchItem({
-    required IconData icon,
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF1E60F2), size: 22),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF334155),
-        ),
-      ),
-      trailing: Switch(
-        value: value,
-        activeColor: const Color(0xFF1E60F2),
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9));
   }
 }

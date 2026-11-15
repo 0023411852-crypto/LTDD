@@ -58,37 +58,33 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Widget build(BuildContext context) {
     final favoritesProvider = context.watch<FavoritesProvider>();
     final isFav = favoritesProvider.isFavorite(widget.article);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: Text(widget.article.source),
         actions: [
           IconButton(
             icon: Icon(
-              isFav ? Icons.favorite : Icons.favorite_border_rounded,
-              color: isFav ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
+              isFav ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+              color: isFav ? cs.primary : null,
             ),
-            tooltip: isFav ? 'Bỏ thích' : 'Yêu thích',
+            tooltip: isFav ? 'Bỏ lưu' : 'Lưu bài viết',
             onPressed: () {
               favoritesProvider.toggleFavorite(widget.article);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(isFav
-                      ? 'Đã xóa khỏi mục Yêu thích'
-                      : 'Đã thêm vào mục Yêu thích'),
+                      ? 'Đã xóa khỏi mục Đã lưu'
+                      : 'Đã thêm vào mục Đã lưu'),
                   duration: const Duration(seconds: 2),
                 ),
               );
             },
           ),
           IconButton(
-            icon: const Icon(Icons.share_outlined, color: Color(0xFF0F172A)),
+            icon: const Icon(Icons.share_outlined),
             tooltip: 'Chia sẻ',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +95,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               );
             },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: _showFullWebView
@@ -110,118 +106,108 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ],
             )
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. Ảnh lớn (Hero Image)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      widget.article.imageUrl ??
-                          'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900',
-                      width: double.infinity,
-                      height: 220,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 200,
-                        color: Colors.grey.shade200,
-                        child: const Center(
-                          child: Icon(Icons.image, size: 48, color: Colors.grey),
+                    child: widget.article.imageUrl != null
+                        ? Image.network(
+                            widget.article.imageUrl!,
+                            width: double.infinity,
+                            height: 220,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              height: 180,
+                              color: cs.surfaceContainerHighest,
+                              child: Center(
+                                child: Icon(Icons.image_outlined,
+                                    size: 40, color: cs.outline),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            height: 180,
+                            color: cs.surfaceContainerHighest,
+                            child: Center(
+                              child: Icon(Icons.image_outlined,
+                                  size: 40, color: cs.outline),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 2. Nguồn & Thời gian
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(6),
                         ),
+                        child: Text(
+                          widget.article.source,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _getTimeAgo(widget.article.publishedAt),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 3. Tiêu đề bài viết
+                  Text(
+                    widget.article.title,
+                    style: tt.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 4. Audio Reader button
+                  OutlinedButton.icon(
+                    onPressed: _toggleAudioReader,
+                    icon: Icon(
+                      _isPlayingAudio
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.volume_up_rounded,
+                      size: 20,
+                    ),
+                    label: Text(_isPlayingAudio
+                        ? 'Tạm dừng đọc bài'
+                        : 'Nghe đọc bài viết'),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // 2. Tiêu đề bài viết
-                  Text(
-                    widget.article.title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // 3. Thông tin meta: Thời gian • Lượt xem • Tòa soạn
-                  Row(
-                    children: [
-                      Text(
-                        _getTimeAgo(widget.article.publishedAt),
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                      Text(
-                        ' • 1.2k lượt xem • ${widget.article.source}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E60F2),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-
-                  // 4. Nút Đọc bài (Audio Player Button chuẩn Mockup)
-                  InkWell(
-                    onTap: _toggleAudioReader,
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1E60F2), Color(0xFF3B82F6)],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF1E60F2)
-                                .withOpacity(0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _isPlayingAudio
-                                ? Icons.pause_circle_filled_rounded
-                                : Icons.volume_up_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _isPlayingAudio ? 'Tạm dừng đọc' : 'Đọc bài',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
                   // 5. Nội dung tóm tắt
                   Text(
                     widget.article.description.isNotEmpty
                         ? widget.article.description
-                        : 'Nội dung chi tiết đang được cập nhật từ ${widget.article.source}. Bạn có thể bấm nút bên dưới để đọc bài viết gốc đầy đủ.',
-                    style: const TextStyle(
-                      fontSize: 16,
+                        : 'Nội dung tóm tắt đang được cập nhật từ ${widget.article.source}. Bạn có thể bấm nút bên dưới để đọc bài viết gốc đầy đủ.',
+                    style: tt.bodyLarge?.copyWith(
                       height: 1.6,
-                      color: Color(0xFF334155),
+                      color: cs.onSurface,
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -230,45 +216,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     height: 48,
-                    child: OutlinedButton.icon(
+                    child: FilledButton.tonalIcon(
                       onPressed: () =>
                           setState(() => _showFullWebView = true),
-                      icon: const Icon(Icons.open_in_browser_rounded,
-                          color: Color(0xFF1E60F2)),
-                      label: const Text(
-                        'Đọc bài viết gốc tại trang báo',
-                        style: TextStyle(
-                          color: Color(0xFF1E60F2),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                            color: Color(0xFF1E60F2), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
+                      icon: const Icon(Icons.open_in_browser_rounded),
+                      label: const Text('Đọc bài viết gốc tại trang báo'),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
       bottomNavigationBar: _showFullWebView
           ? null
           : Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -3),
-                  ),
-                ],
+                color: cs.surface,
+                border: Border(top: BorderSide(color: cs.outlineVariant)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -278,24 +243,29 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       favoritesProvider.toggleFavorite(widget.article);
                     },
                     icon: Icon(
-                      isFav ? Icons.favorite : Icons.favorite_border,
-                      color: isFav ? const Color(0xFFEF4444) : Colors.grey,
-                      size: 26,
+                      isFav
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_outline_rounded,
+                      color: isFav ? cs.primary : cs.onSurfaceVariant,
                     ),
+                    tooltip: isFav ? 'Bỏ lưu' : 'Lưu lại',
                   ),
                   IconButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đã sao chép liên kết!')),
+                        const SnackBar(
+                            content: Text('Đã sao chép liên kết!')),
                       );
                     },
-                    icon: const Icon(Icons.share_outlined,
-                        color: Colors.grey, size: 26),
+                    icon: Icon(Icons.share_outlined,
+                        color: cs.onSurfaceVariant),
+                    tooltip: 'Chia sẻ',
                   ),
                   IconButton(
-                    onPressed: () => setState(() => _showFullWebView = true),
-                    icon: const Icon(Icons.public,
-                        color: Color(0xFF1E60F2), size: 26),
+                    onPressed: () =>
+                        setState(() => _showFullWebView = true),
+                    icon: Icon(Icons.public, color: cs.primary),
+                    tooltip: 'Đọc web',
                   ),
                 ],
               ),

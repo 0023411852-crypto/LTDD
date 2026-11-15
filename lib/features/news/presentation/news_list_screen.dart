@@ -21,93 +21,73 @@ class NewsListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final newsProvider = context.watch<NewsProvider>();
     final articles = newsProvider.articles;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        titleSpacing: 16,
-        title: const Text(
-          'Tin tức',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-          ),
-        ),
+        title: const Text('Tin tức'),
         actions: [
           IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SearchScreen()),
-              );
-            },
-            icon: const Icon(
-              Icons.search_rounded,
-              color: Color(0xFF0F172A),
-              size: 24,
+            icon: const Icon(Icons.search_rounded),
+            tooltip: 'Tìm kiếm',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
-      ),
-      body: Column(
-        children: [
-          // Category Pills
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 10),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Container(
+            color: Theme.of(context).colorScheme.surface,
             child: SizedBox(
-              height: 38,
+              height: 48,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 itemCount: newsProvider.categories.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final cat = newsProvider.categories[index];
-                  final isSelected = newsProvider.selectedCategory.id == cat.id;
-
-                  return ChoiceChip(
+                  final isSelected =
+                      newsProvider.selectedCategory.id == cat.id;
+                  return FilterChip(
                     label: Text(cat.label),
                     selected: isSelected,
                     onSelected: (_) => newsProvider.selectCategory(cat),
-                    selectedColor: const Color(0xFF1E60F2),
-                    backgroundColor: const Color(0xFFF1F5F9),
+                    selectedColor: cs.primaryContainer,
+                    checkmarkColor: cs.primary,
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF475569),
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? cs.primary
+                          : cs.onSurfaceVariant,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       fontSize: 13,
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    side: BorderSide.none,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    visualDensity: VisualDensity.compact,
                   );
                 },
               ),
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-          // Danh sách tin tức
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => newsProvider.fetchNews(),
-              child: _buildBody(context, newsProvider, articles),
-            ),
-          ),
-        ],
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () => newsProvider.fetchNews(),
+        child: _buildBody(context, newsProvider, articles),
       ),
     );
   }
 
   Widget _buildBody(
       BuildContext context, NewsProvider provider, List<Article> articles) {
+    final cs = Theme.of(context).colorScheme;
+
     if (provider.status == NewsStatus.loading && articles.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -115,25 +95,27 @@ class NewsListScreen extends StatelessWidget {
     if (provider.status == NewsStatus.error && articles.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.cloud_off_rounded,
-                  color: Colors.grey, size: 54),
-              const SizedBox(height: 12),
-              Text(
-                'Không tải được tin tức: ${provider.errorMessage}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),
-              ),
+              Icon(Icons.cloud_off_outlined, size: 48, color: cs.outline),
               const SizedBox(height: 16),
-              ElevatedButton(
+              Text(
+                'Không tải được tin tức',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                provider.errorMessage,
+                textAlign: TextAlign.center,
+                style:
+                    TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.tonal(
                 onPressed: () => provider.fetchNews(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E60F2),
-                ),
-                child: const Text('Tải lại', style: TextStyle(color: Colors.white)),
+                child: const Text('Thử lại'),
               ),
             ],
           ),
@@ -142,120 +124,130 @@ class NewsListScreen extends StatelessWidget {
     }
 
     return NotificationListener<ScrollNotification>(
-      onNotification: (ScrollNotification scrollInfo) {
-        if (scrollInfo.metrics.pixels >=
-                scrollInfo.metrics.maxScrollExtent - 200 &&
+      onNotification: (info) {
+        if (info.metrics.pixels >= info.metrics.maxScrollExtent - 200 &&
             provider.hasMore) {
           provider.loadMore();
         }
         return false;
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: ListView.separated(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         itemCount: articles.length + (provider.hasMore ? 1 : 0),
+        separatorBuilder: (_, __) =>
+            Divider(height: 1, color: cs.outlineVariant),
         itemBuilder: (context, index) {
           if (index == articles.length) {
             return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
             );
           }
 
           final article = articles[index];
-          return InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ArticleDetailScreen(article: article),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFF1F5F9)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      article.imageUrl ??
-                          'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400',
-                      width: 95,
-                      height: 72,
+          return _ArticleRow(
+            article: article,
+            timeAgo: _getTimeAgo(article.publishedAt),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ArticleRow extends StatelessWidget {
+  final Article article;
+  final String timeAgo;
+
+  const _ArticleRow({required this.article, required this.timeAgo});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => ArticleDetailScreen(article: article)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: article.imageUrl != null
+                  ? Image.network(
+                      article.imageUrl!,
+                      width: 88,
+                      height: 66,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                        width: 95,
-                        height: 72,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image, color: Colors.grey),
+                        width: 88,
+                        height: 66,
+                        color: cs.surfaceContainerHighest,
+                        child: Icon(Icons.image_outlined,
+                            color: cs.outline, size: 24),
                       ),
+                    )
+                  : Container(
+                      width: 88,
+                      height: 66,
+                      color: cs.surfaceContainerHighest,
+                      child: Icon(Icons.image_outlined,
+                          color: cs.outline, size: 24),
                     ),
+            ),
+            const SizedBox(width: 12),
+            // Text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          article.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
-                            height: 1.3,
-                          ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        article.source,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: cs.primary,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Text(
-                              _getTimeAgo(article.publishedAt),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                            Text(
-                              ' • ${article.source}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1E60F2),
-                              ),
-                            ),
-                          ],
+                      ),
+                      Text(
+                        '  ·  $timeAgo',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: cs.onSurfaceVariant,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }

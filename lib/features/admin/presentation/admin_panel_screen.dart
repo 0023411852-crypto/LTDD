@@ -65,6 +65,46 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final favProvider = context.watch<FavoritesProvider>();
     final weatherProvider = context.watch<WeatherProvider>();
 
+    if (!authProvider.isAdmin) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Bảng quản trị viên'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.admin_panel_settings_outlined,
+                    size: 64, color: Color(0xFF0D9488)),
+                const SizedBox(height: 16),
+                const Text(
+                  'Quyền truy cập bị từ chối',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Chỉ tài khoản có vai trò Quản trị viên (Admin) mới có quyền truy cập trang này.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.tonal(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Quay lại'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final realArticles = newsProvider.articles;
     final realCategories = newsProvider.categories;
 

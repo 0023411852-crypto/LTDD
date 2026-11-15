@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../utils/app_colors.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -9,189 +10,213 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  // Demo items — clearly labeled as local/demo, not server-delivered
   final List<Map<String, dynamic>> _notifications = [
     {
       'id': '1',
       'title': 'Dự báo thời tiết hôm nay',
       'body':
-          'Thời tiết khu vực nhiều mây, có mưa rải rác vào buổi chiều. Hãy mang theo áo mưa khi ra ngoài.',
+          'Thời tiết nhiều mây, có mưa rải rác buổi chiều. Hãy mang theo áo mưa.',
       'time': '15 phút trước',
-      'type': 'Thời tiết',
+      'type': 'weather',
       'read': false,
     },
     {
       'id': '2',
       'title': 'Tin nổi bật buổi sáng',
       'body':
-          'Tổng hợp các sự kiện kinh tế và xã hội đáng chú ý trong ngày đã sẵn sàng.',
+          'Tổng hợp sự kiện kinh tế và xã hội đáng chú ý trong ngày đã sẵn sàng.',
       'time': '2 giờ trước',
-      'type': 'Tin nóng',
+      'type': 'news',
       'read': false,
     },
     {
       'id': '3',
-      'title': 'Chào mừng bạn đến với Daily News & Weather Portal!',
+      'title': 'Chào mừng đến Daily News & Weather Portal',
       'body':
-          'Khám phá ngay tính năng đọc tin tức từ các báo lớn và theo dõi dự báo thời tiết chuẩn xác.',
+          'Khám phá tin tức từ các báo lớn và theo dõi thời tiết chuẩn xác.',
       'time': 'Hôm qua',
-      'type': 'Hệ thống',
+      'type': 'system',
       'read': true,
     },
   ];
 
-  void _markAllAsRead() {
+  void _markAllRead() {
     setState(() {
-      for (var item in _notifications) {
-        item['read'] = true;
+      for (final n in _notifications) {
+        n['read'] = true;
       }
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã đánh dấu tất cả là đã đọc')),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _notifications.where((n) => n['read'] == false).length;
+    final unread = _notifications.where((n) => n['read'] == false).length;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông báo'),
+        title: Text(
+            unread > 0 ? 'Thông báo ($unread chưa đọc)' : 'Thông báo'),
         actions: [
-          if (unreadCount > 0)
+          if (unread > 0)
             TextButton(
-              onPressed: _markAllAsRead,
-              child: const Text('Đã đọc tất cả'),
+              onPressed: _markAllRead,
+              child: const Text('Đọc tất cả'),
             ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: _notifications.isEmpty
-          ? Center(
+      body: Column(
+        children: [
+          // Label rõ ràng: đây là demo local, không phải server push
+          Container(
+            width: double.infinity,
+            color: cs.surfaceContainerHighest,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'Thông báo demo — chưa kết nối server push',
+                  style: TextStyle(
+                      fontSize: 11.5, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _notifications.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.notifications_none_outlined,
+                            size: 56, color: cs.outline),
+                        const SizedBox(height: 16),
+                        Text('Không có thông báo',
+                            style: Theme.of(context).textTheme.titleMedium),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    itemCount: _notifications.length,
+                    separatorBuilder: (_, __) =>
+                        Divider(height: 1, color: cs.outlineVariant),
+                    itemBuilder: (context, index) {
+                      final item = _notifications[index];
+                      return _NotifTile(
+                        item: item,
+                        onTap: () => setState(() => item['read'] = true),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotifTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final VoidCallback onTap;
+
+  const _NotifTile({required this.item, required this.onTap});
+
+  IconData _typeIcon(String type) => switch (type) {
+        'weather' => Icons.wb_sunny_outlined,
+        'news' => Icons.newspaper_outlined,
+        _ => Icons.notifications_outlined,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isRead = item['read'] as bool;
+    final type = item['type'] as String;
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Dot unread
+            Padding(
+              padding: const EdgeInsets.only(top: 6, right: 8),
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isRead ? Colors.transparent : cs.primary,
+                ),
+              ),
+            ),
+            // Icon
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: type == 'weather'
+                    ? Colors.orange.shade50
+                    : cs.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                _typeIcon(type),
+                size: 18,
+                color: type == 'weather'
+                    ? Colors.orange.shade700
+                    : cs.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.notifications_none,
-                      size: 64, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Không có thông báo mới',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        item['title'] as String,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: isRead
+                              ? FontWeight.w500
+                              : FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      Text(
+                        item['time'] as String,
+                        style: TextStyle(
+                            fontSize: 11, color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item['body'] as String,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13, color: cs.onSurfaceVariant, height: 1.4),
                   ),
                 ],
               ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _notifications.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final item = _notifications[index];
-                final isRead = item['read'] as bool;
-
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      item['read'] = true;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isRead
-                          ? Colors.white
-                          : AppColors.primary.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isRead
-                            ? Colors.grey.shade200
-                            : AppColors.primary.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: item['type'] == 'Thời tiết'
-                              ? Colors.orange.shade100
-                              : AppColors.primary.withOpacity(0.1),
-                          child: Icon(
-                            item['type'] == 'Thời tiết'
-                                ? Icons.wb_sunny_outlined
-                                : Icons.newspaper_outlined,
-                            color: item['type'] == 'Thời tiết'
-                                ? Colors.orange
-                                : AppColors.primary,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    item['type'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                  Text(
-                                    item['time'] as String,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                item['title'] as String,
-                                style: TextStyle(
-                                  fontWeight: isRead
-                                      ? FontWeight.w600
-                                      : FontWeight.bold,
-                                  fontSize: 15,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                item['body'] as String,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade600,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (!isRead) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              },
             ),
+          ],
+        ),
+      ),
     );
   }
 }

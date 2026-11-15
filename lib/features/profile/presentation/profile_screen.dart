@@ -14,303 +14,273 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final bool isLoggedIn = auth.isAuthenticated;
-
-    final displayName = isLoggedIn ? auth.displayName : 'Khách';
-    final email = isLoggedIn ? auth.email : 'Chưa đăng nhập tài khoản';
+    final isLoggedIn = auth.isAuthenticated;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Hồ sơ cá nhân',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Tài khoản')),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          // Header Người dùng với Avatar tròn
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: const Color(0xFF1E60F2).withOpacity(0.15),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    size: 48,
-                    color: Color(0xFF1E60F2),
+          // ── Avatar & info ─────────────────────────────────────────
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: cs.primaryContainer,
+                    child: Text(
+                      isLoggedIn
+                          ? (auth.displayName.isNotEmpty
+                              ? auth.displayName[0].toUpperCase()
+                              : '?')
+                          : '?',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: cs.primary),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  displayName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  email,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                if (!isLoggedIn) ...[
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: 140,
-                    height: 36,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E60F2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isLoggedIn ? auth.displayName : 'Khách',
+                          style: tt.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
-                      ),
-                      child: const Text('Đăng nhập',
-                          style: TextStyle(color: Colors.white, fontSize: 13)),
+                        const SizedBox(height: 2),
+                        Text(
+                          isLoggedIn ? auth.email : 'Chưa đăng nhập',
+                          style: TextStyle(
+                              fontSize: 13, color: cs.onSurfaceVariant),
+                        ),
+                        if (!isLoggedIn) ...[
+                          const SizedBox(height: 10),
+                          FilledButton.tonal(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginScreen()),
+                            ),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text('Đăng nhập', fontSize: 13),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 20),
 
-          // Menu List chuẩn Mockup Screen #10
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
+          // ── Menu ──────────────────────────────────────────────────
+          _MenuSection(
+            children: [
+              _MenuItem(
+                icon: Icons.bookmark_outline_rounded,
+                label: 'Bài đã lưu',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+              ),
+              _MenuItem(
+                icon: Icons.search_rounded,
+                label: 'Lịch sử tìm kiếm',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const SearchScreen())),
+              ),
+              _MenuItem(
+                icon: Icons.notifications_outlined,
+                label: 'Thông báo',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const NotificationsScreen())),
+              ),
+              _MenuItem(
+                icon: Icons.settings_outlined,
+                label: 'Cài đặt',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen())),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (auth.isAdmin) ...[
+            _MenuSection(
               children: [
-                _buildMenuItem(
-                  icon: Icons.person_outline_rounded,
-                  title: 'Thông tin cá nhân',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tính năng chỉnh sửa hồ sơ')),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  icon: Icons.bookmark_border_rounded,
-                  title: 'Tin đã lưu',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const FavoritesScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  icon: Icons.history_rounded,
-                  title: 'Lịch sử tìm kiếm',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SearchScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  icon: Icons.settings_outlined,
-                  title: 'Cài đặt',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  icon: Icons.notifications_none_rounded,
-                  title: 'Thông báo',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                // Lối tắt truy cập Admin Panel
-                _buildMenuItem(
+                _MenuItem(
                   icon: Icons.admin_panel_settings_outlined,
-                  title: 'Bảng quản trị viên (Admin Panel)',
-                  iconColor: const Color(0xFF059669),
-                  onTap: () {
-                    Navigator.push(
+                  label: 'Bảng quản trị (Admin)',
+                  iconColor: const Color(0xFF0D9488),
+                  onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const AdminPanelScreen(),
-                      ),
-                    );
-                  },
+                          builder: (_) => const AdminPanelScreen())),
                 ),
-                _buildDivider(),
-                _buildMenuItem(
-                  icon: Icons.help_outline_rounded,
-                  title: 'Trợ giúp & hỗ trợ',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Trung tâm hỗ trợ người dùng')),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                if (isLoggedIn)
-                  _buildMenuItem(
-                    icon: Icons.logout_rounded,
-                    title: 'Đăng xuất',
-                    iconColor: const Color(0xFFEF4444),
-                    textColor: const Color(0xFFEF4444),
-                    showArrow: false,
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          title: const Text(
-                            'Xác nhận đăng xuất',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          content: const Text(
-                            'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Hủy'),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFEF4444),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              onPressed: () async {
-                                Navigator.pop(ctx);
-                                await auth.signOut();
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Đã đăng xuất thành công'),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Đăng xuất',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  )
-                else
-                  _buildMenuItem(
-                    icon: Icons.login_rounded,
-                    title: 'Đăng nhập / Đăng ký',
-                    iconColor: const Color(0xFF1E60F2),
-                    textColor: const Color(0xFF1E60F2),
-                    showArrow: true,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const LoginScreen(),
-                        ),
-                      );
-                    },
-                  ),
               ],
             ),
+            const SizedBox(height: 12),
+          ],
+
+          _MenuSection(
+            children: [
+              _MenuItem(
+                icon: Icons.help_outline_rounded,
+                label: 'Trợ giúp & hỗ trợ',
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Trung tâm hỗ trợ người dùng')),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 12),
+
+          // ── Logout / Login ─────────────────────────────────────────
+          if (isLoggedIn)
+            _MenuSection(
+              children: [
+                _MenuItem(
+                  icon: Icons.logout_rounded,
+                  label: 'Đăng xuất',
+                  iconColor: cs.error,
+                  textColor: cs.error,
+                  trailing: const SizedBox.shrink(),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Đăng xuất'),
+                        content: const Text(
+                            'Bạn có chắc muốn đăng xuất khỏi tài khoản?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Hủy'),
+                          ),
+                          FilledButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              await auth.signOut();
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Đã đăng xuất')),
+                              );
+                            },
+                            child: const Text('Đăng xuất'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            )
+          else
+            _MenuSection(
+              children: [
+                _MenuItem(
+                  icon: Icons.login_rounded,
+                  label: 'Đăng nhập / Đăng ký',
+                  iconColor: cs.primary,
+                  textColor: cs.primary,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color iconColor = const Color(0xFF1E60F2),
-    Color textColor = const Color(0xFF0F172A),
-    bool showArrow = true,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: iconColor, size: 22),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
+// ─────────────────────────────────────────────────────────────────────────────
+class _MenuSection extends StatelessWidget {
+  final List<Widget> children;
+  const _MenuSection({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant),
       ),
-      trailing: showArrow
-          ? const Icon(Icons.chevron_right_rounded,
-              color: Colors.grey, size: 20)
-          : null,
-      onTap: onTap,
+      child: Column(
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1)
+              Divider(height: 1, indent: 48, color: cs.outlineVariant),
+          ],
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildDivider() {
-    return const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9));
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? textColor;
+  final Widget? trailing;
+
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.iconColor,
+    this.textColor,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(icon,
+          size: 20, color: iconColor ?? cs.onSurfaceVariant),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: textColor ?? cs.onSurface,
+        ),
+      ),
+      trailing: trailing ??
+          Icon(Icons.chevron_right_rounded,
+              size: 18, color: cs.outlineVariant),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      visualDensity: VisualDensity.compact,
+    );
   }
+}
+
+// Extension để hỗ trợ cú pháp fontSize trong Text widget
+extension on Text {
+  Text get _ => this;
 }
