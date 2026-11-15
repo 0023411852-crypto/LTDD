@@ -1121,6 +1121,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             'UID: ${user.uid}',
                             style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontFamily: 'monospace'),
                           ),
+                        ] else if (isLoggedIn) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'UID: ${auth.uid}',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontFamily: 'monospace'),
+                          ),
                         ],
                       ],
                     ),
