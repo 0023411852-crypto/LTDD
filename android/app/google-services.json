@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "650149107566",
+    "firebase_url": "https://linh-4782e-default-rtdb.firebaseio.com",
+    "project_id": "linh-4782e",
+    "storage_bucket": "linh-4782e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:650149107566:android:77393474d6a991606e937f",
+        "android_client_info": {
+          "package_name": "com.example.daily_news_weather_portal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWj_W4FV8MDor4Gx9kpIhZQezxjxgEnjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

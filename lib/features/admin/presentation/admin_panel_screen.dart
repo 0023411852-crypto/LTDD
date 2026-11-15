@@ -1,0 +1,1715 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../models/article.dart';
+import '../../../services/news_service.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../favorites/providers/favorites_provider.dart';
+import '../../news/providers/news_provider.dart';
+import '../../weather/providers/weather_provider.dart';
+
+class AdminPanelScreen extends StatefulWidget {
+  const AdminPanelScreen({super.key});
+
+  @override
+  State<AdminPanelScreen> createState() => _AdminPanelScreenState();
+}
+
+class _AdminPanelScreenState extends State<AdminPanelScreen> {
+  // 0: Dashboard, 1: Tin tức, 2: Danh mục, 3: Người dùng, 4: Gửi thông báo, 5: Báo cáo
+  int _currentTab = 0;
+
+  // Search & Filter queries
+  String _newsSearchQuery = '';
+  String _newsFilter = 'Tất cả'; // Tất cả, Đã duyệt, Chờ duyệt
+
+  // Quản lý trạng thái duyệt bài cục bộ (dựa trên Title bài viết thật)
+  final Set<String> _pendingArticleTitles = {};
+
+  // Danh sách thông báo thực tế do Admin phát sóng trong phiên
+  final List<Map<String, dynamic>> _broadcastNotifications = [];
+
+  // Controllers cho form gửi thông báo
+  final _notifTitleController = TextEditingController();
+  final _notifBodyController = TextEditingController();
+  String _selectedNotifType = 'Tin nóng';
+
+  @override
+  void dispose() {
+    _notifTitleController.dispose();
+    _notifBodyController.dispose();
+    super.dispose();
+  }
+
+  String _getTabTitle() {
+    switch (_currentTab) {
+      case 0:
+        return 'Admin Dashboard';
+      case 1:
+        return 'Quản lý tin tức';
+      case 2:
+        return 'Quản lý danh mục';
+      case 3:
+        return 'Tài khoản người dùng';
+      case 4:
+        return 'Phát sóng thông báo';
+      case 5:
+        return 'Thống kê & Báo cáo';
+      default:
+        return 'Admin Panel';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final newsProvider = context.watch<NewsProvider>();
+    final authProvider = context.watch<AuthProvider>();
+    final favProvider = context.watch<FavoritesProvider>();
+    final weatherProvider = context.watch<WeatherProvider>();
+
+    final realArticles = newsProvider.articles;
+    final realCategories = newsProvider.categories;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: const Color(0xFF1654F0),
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _getTabTitle(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.3,
+              ),
+            ),
+            Text(
+              'Số liệu thực tế: ${realArticles.length} bài viết • ${realCategories.length} chuyên mục',
+              style: const TextStyle(
+                color: Color(0xFFBFDBFE),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Làm mới dữ liệu từ RSS',
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            onPressed: () async {
+              await newsProvider.fetchNews();
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã đồng bộ lại dữ liệu tin tức từ RSS!'), backgroundColor: Colors.green),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            children: [
+              // Top Navigation Bar
+              _buildModernTabBar(),
+
+              // Body content
+              Expanded(
+                child: IndexedStack(
+                  index: _currentTab,
+                  children: [
+                    _buildDashboardTab(newsProvider, authProvider, favProvider, weatherProvider),
+                    _buildNewsManagementTab(newsProvider),
+                    _buildCategoryManagementTab(newsProvider),
+                    _buildUserManagementTab(authProvider),
+                    _buildPushNotificationTab(),
+                    _buildReportStatisticsTab(newsProvider, favProvider),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // TOP HORIZONTAL TAB BAR (Chuyển nhanh giữa 6 chức năng)
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildModernTabBar() {
+    final tabs = [
+      {'icon': Icons.dashboard_rounded, 'label': 'Dashboard'},
+      {'icon': Icons.newspaper_rounded, 'label': 'Tin tức'},
+      {'icon': Icons.category_rounded, 'label': 'Danh mục'},
+      {'icon': Icons.manage_accounts_rounded, 'label': 'Tài khoản'},
+      {'icon': Icons.send_rounded, 'label': 'Thông báo'},
+      {'icon': Icons.insights_rounded, 'label': 'Báo cáo'},
+    ];
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: List.generate(tabs.length, (idx) {
+            final isSelected = _currentTab == idx;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InkWell(
+                onTap: () => setState(() => _currentTab = idx),
+                borderRadius: BorderRadius.circular(20),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF1654F0) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF1654F0).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        tabs[idx]['icon'] as IconData,
+                        size: 17,
+                        color: isSelected ? Colors.white : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tabs[idx]['label'] as String,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          color: isSelected ? Colors.white : const Color(0xFF475569),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 1. DASHBOARD THỰC TẾ (Không số liệu giả)
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildDashboardTab(
+    NewsProvider news,
+    AuthProvider auth,
+    FavoritesProvider fav,
+    WeatherProvider weather,
+  ) {
+    final articleCount = news.articles.length;
+    final categoryCount = news.categories.length;
+    final favCount = fav.favorites.length;
+    final temp = weather.weather?.temperature.round();
+    final city = weather.weather?.city ?? 'Hà Nội';
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Admin Profile Card thực tế
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E60F2), Color(0xFF2563EB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1E60F2).withOpacity(0.3),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: CircleAvatar(
+                  radius: 26,
+                  backgroundColor: const Color(0xFFDBEAFE),
+                  child: Icon(
+                    auth.isAuthenticated ? Icons.person_rounded : Icons.person_outline_rounded,
+                    color: const Color(0xFF1654F0),
+                    size: 30,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            auth.isAuthenticated ? auth.displayName : 'Admin (Chế độ khách)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: auth.isAuthenticated ? const Color(0xFF10B981) : Colors.amber.shade700,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            auth.isAuthenticated ? 'ONLINE' : 'GUEST',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      auth.isAuthenticated ? auth.email : 'Chưa đăng nhập tài khoản Firebase',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFFDBEAFE)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 4 Thẻ chỉ số thực tế
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Tổng số tin tức',
+                value: '$articleCount',
+                subText: 'Đang tải từ RSS & Admin',
+                icon: Icons.article_rounded,
+                color: const Color(0xFF2563EB),
+                bgGradient: const [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Số chuyên mục',
+                value: '$categoryCount',
+                subText: 'Đang hoạt động',
+                icon: Icons.category_rounded,
+                color: const Color(0xFFF59E0B),
+                bgGradient: const [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Tin đã lưu',
+                value: '$favCount',
+                subText: 'Người dùng yêu thích',
+                icon: Icons.bookmark_rounded,
+                color: const Color(0xFF10B981),
+                bgGradient: const [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Thời tiết hiện tại',
+                value: temp != null ? '$temp°C' : '--°C',
+                subText: city,
+                icon: Icons.cloud_queue_rounded,
+                color: const Color(0xFF0284C7),
+                bgGradient: const [Color(0xFFF0F9FF), Color(0xFFE0F2FE)],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Tác vụ nhanh
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Tác vụ quản trị nhanh',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _buildQuickActionBtn(
+                    label: '+ Đăng tin mới',
+                    icon: Icons.post_add_rounded,
+                    color: const Color(0xFF1E60F2),
+                    onTap: () {
+                      setState(() => _currentTab = 1);
+                      _showAddArticleDialog(context);
+                    },
+                  ),
+                  _buildQuickActionBtn(
+                    label: 'Xem danh sách tin',
+                    icon: Icons.newspaper_rounded,
+                    color: const Color(0xFF10B981),
+                    onTap: () => setState(() => _currentTab = 1),
+                  ),
+                  _buildQuickActionBtn(
+                    label: 'Phát sóng thông báo',
+                    icon: Icons.send_rounded,
+                    color: const Color(0xFFEC4899),
+                    onTap: () => setState(() => _currentTab = 4),
+                  ),
+                  _buildQuickActionBtn(
+                    label: 'Báo cáo nguồn tin',
+                    icon: Icons.pie_chart_rounded,
+                    color: const Color(0xFF8B5CF6),
+                    onTap: () => setState(() => _currentTab = 5),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Biểu đồ phân bổ bài viết thực tế theo ngày trong tuần
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Phân bổ tin bài thực tế',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Đếm số lượng bài viết theo ngày đăng (publishedAt)',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Tổng $articleCount bài',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Vẽ biểu đồ dựa trên số lượng bài viết thật
+              SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: CustomPaint(
+                  painter: _RealNewsDistributionChartPainter(
+                    articles: news.articles,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: const ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) {
+                  return Text(d, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)));
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 2. TAB: QUẢN LÝ TIN TỨC THỰC TẾ (Lấy trực tiếp từ NewsProvider)
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildNewsManagementTab(NewsProvider news) {
+    final allArticles = news.articles;
+
+    final filtered = allArticles.where((a) {
+      final matchesSearch = _newsSearchQuery.isEmpty ||
+          a.title.toLowerCase().contains(_newsSearchQuery.toLowerCase()) ||
+          a.source.toLowerCase().contains(_newsSearchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      final isPending = _pendingArticleTitles.contains(a.title);
+      if (_newsFilter == 'Chờ duyệt') return isPending;
+      if (_newsFilter == 'Đã duyệt') return !isPending;
+      return true;
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          // Search & Filter header
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              children: [
+                TextField(
+                  onChanged: (val) => setState(() => _newsSearchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm trên ${allArticles.length} bài viết thật...',
+                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13.5),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF1E60F2), size: 22),
+                    suffixIcon: _newsSearchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () => setState(() => _newsSearchQuery = ''),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Filter tabs: Tất cả, Đã duyệt, Chờ duyệt
+                Row(
+                  children: ['Tất cả', 'Đã duyệt', 'Chờ duyệt'].map((tab) {
+                    final isSel = _newsFilter == tab;
+                    final count = tab == 'Tất cả'
+                        ? allArticles.length
+                        : tab == 'Chờ duyệt'
+                            ? _pendingArticleTitles.length
+                            : allArticles.length - _pendingArticleTitles.length;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text('$tab ($count)'),
+                        selected: isSel,
+                        onSelected: (_) => setState(() => _newsFilter = tab),
+                        selectedColor: const Color(0xFF1E60F2).withOpacity(0.12),
+                        checkmarkColor: const Color(0xFF1E60F2),
+                        labelStyle: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                          color: isSel ? const Color(0xFF1E60F2) : const Color(0xFF475569),
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+
+          // News list
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.article_outlined, size: 54, color: Color(0xFFCBD5E1)),
+                        const SizedBox(height: 12),
+                        Text(
+                          allArticles.isEmpty
+                              ? 'Đang tải dữ liệu từ RSS...'
+                              : 'Không tìm thấy bài viết nào phù hợp',
+                          style: const TextStyle(color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final article = filtered[index];
+                      final isPending = _pendingArticleTitles.contains(article.title);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Thumbnail
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                width: 80,
+                                height: 74,
+                                color: const Color(0xFFE2E8F0),
+                                child: article.imageUrl != null
+                                    ? Image.network(
+                                        article.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Icon(
+                                          Icons.image_not_supported_outlined,
+                                          color: Color(0xFF94A3B8),
+                                          size: 28,
+                                        ),
+                                      )
+                                    : const Icon(Icons.newspaper_rounded, color: Color(0xFF1E60F2), size: 30),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+
+                            // Content
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    article.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF0F172A),
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          article.source,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF1E60F2),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        article.publishedAt != null
+                                            ? '${article.publishedAt!.day}/${article.publishedAt!.month}'
+                                            : 'Gần đây',
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Actions
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                // Toggle status
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isPending) {
+                                        _pendingArticleTitles.remove(article.title);
+                                      } else {
+                                        _pendingArticleTitles.add(article.title);
+                                      }
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(isPending
+                                            ? 'Đã duyệt bài viết "${article.title}"'
+                                            : 'Đã chuyển bài viết sang Chờ duyệt'),
+                                        backgroundColor: isPending ? Colors.green : Colors.orange,
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: !isPending ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: !isPending
+                                            ? const Color(0xFF10B981).withOpacity(0.3)
+                                            : const Color(0xFFF59E0B).withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          !isPending ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
+                                          size: 13,
+                                          color: !isPending ? const Color(0xFF059669) : const Color(0xFFD97706),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          !isPending ? 'Đã duyệt' : 'Chờ duyệt',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: !isPending ? const Color(0xFF059669) : const Color(0xFFD97706),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+
+                                // Delete from real news provider
+                                InkWell(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                        title: const Text('Xác nhận xóa bài viết', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        content: Text('Xóa bài viết "${article.title}" khỏi hệ thống ứng dụng?'),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                                            onPressed: () {
+                                              Navigator.pop(ctx);
+                                              news.removeArticle(article.title);
+                                              setState(() {
+                                                _pendingArticleTitles.remove(article.title);
+                                              });
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Đã xóa bài viết khỏi ứng dụng'), backgroundColor: Colors.red),
+                                              );
+                                            },
+                                            child: const Text('Xóa ngay', style: TextStyle(color: Colors.white)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4),
+                                    child: Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 19),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF1654F0),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text('Đăng tin mới', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+        onPressed: () => _showAddArticleDialog(context),
+      ),
+    );
+  }
+
+  void _showAddArticleDialog(BuildContext context) {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final authorCtrl = TextEditingController(text: 'Ban Biên Tập');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Đăng bài viết mới vào App',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const Divider(),
+              const SizedBox(height: 10),
+
+              const Text('Tiêu đề bài viết *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: titleCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Nhập tiêu đề tin tức nổi bật...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              const Text('Nội dung tóm tắt *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: descCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Mô tả chi tiết nội dung tin tức...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              const Text('Nguồn / Tác giả', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: authorCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Ban Biên Tập, Tin Tức 24h...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              ElevatedButton(
+                onPressed: () {
+                  if (titleCtrl.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vui lòng nhập tiêu đề bài viết'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+
+                  final newTitle = titleCtrl.text.trim();
+                  final newDesc = descCtrl.text.trim();
+                  final newAuthor = authorCtrl.text.trim().isEmpty ? 'Admin' : authorCtrl.text.trim();
+
+                  // Thêm trực tiếp vào NewsProvider thật
+                  context.read<NewsProvider>().addArticle(
+                        Article(
+                          title: newTitle,
+                          link: 'https://news.google.com',
+                          description: newDesc.isNotEmpty ? newDesc : newTitle,
+                          source: newAuthor,
+                          publishedAt: DateTime.now(),
+                        ),
+                      );
+
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã đăng bài viết thành công! Bài viết đã xuất hiện trên toàn bộ ứng dụng.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1654F0),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Đăng bài viết ngay', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 3. TAB: QUẢN LÝ DANH MỤC THỰC TẾ (Lấy từ NewsService.categories)
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildCategoryManagementTab(NewsProvider news) {
+    final categories = news.categories;
+    final selectedCat = news.selectedCategory;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Danh mục RSS chính thức (${categories.length})',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('Đồng bộ từ RSS', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2))),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        ...categories.map((cat) {
+          final isSelected = selectedCat.id == cat.id;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? const Color(0xFF1E60F2) : const Color(0xFFE2E8F0),
+                width: isSelected ? 1.8 : 1.0,
+              ),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF1E60F2) : const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.category_rounded,
+                  color: isSelected ? Colors.white : const Color(0xFF1E60F2),
+                  size: 22,
+                ),
+              ),
+              title: Row(
+                children: [
+                  Text(
+                    cat.label,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF0F172A)),
+                  ),
+                  if (isSelected) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('ĐANG XEM', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ],
+                ],
+              ),
+              subtitle: Text(
+                'Nguồn: ${cat.source} • URL: ${cat.rssUrl}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              trailing: ElevatedButton(
+                onPressed: () async {
+                  await news.selectCategory(cat);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Đã chọn chuyên mục: ${cat.label}'), backgroundColor: Colors.green),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isSelected ? const Color(0xFF10B981) : const Color(0xFF1E60F2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+                child: Text(
+                  isSelected ? 'Đang chọn' : 'Chọn đọc',
+                  style: const TextStyle(fontSize: 12, color: Colors.white),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 4. TAB: TÀI KHOẢN NGƯỜI DÙNG THỰC TẾ (Lấy từ AuthProvider)
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildUserManagementTab(AuthProvider auth) {
+    final user = auth.user;
+    final isLoggedIn = auth.isAuthenticated;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Tài khoản đang đăng nhập trong phiên',
+                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: isLoggedIn ? const Color(0xFF1E60F2) : const Color(0xFF94A3B8),
+                    child: Text(
+                      isLoggedIn && auth.displayName.isNotEmpty
+                          ? auth.displayName[0].toUpperCase()
+                          : 'K',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isLoggedIn ? auth.displayName : 'Khách vãng lai',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isLoggedIn ? auth.email : 'Chưa đăng nhập tài khoản',
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                        ),
+                        if (user != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'UID: ${user.uid}',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontFamily: 'monospace'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isLoggedIn ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      isLoggedIn ? 'Quản trị viên' : 'Khách',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isLoggedIn ? const Color(0xFF059669) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Hướng dẫn quản trị người dùng qua Firebase Authentication
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: Color(0xFF1E60F2), size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Quản lý người dùng Firebase Auth',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Hệ thống đang tích hợp xác thực trực tiếp qua Firebase Authentication. Toàn bộ người dùng đăng ký qua Email hoặc Google Sign-In được lưu trữ an toàn trên Google Cloud Console.',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 5. TAB: PHÁT SÓNG THÔNG BÁO (Lưu vào danh sách thực tế của phiên)
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildPushNotificationTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.campaign_rounded, color: Color(0xFF1654F0), size: 26),
+                  SizedBox(width: 8),
+                  Text(
+                    'Phát sóng thông báo ứng dụng',
+                    style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Gửi thông báo đẩy đến phiên người dùng hiện tại',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 18),
+
+              const Text('Chủ đề thông báo *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['Tin nóng', 'Thời tiết', 'Hệ thống', 'Khuyến mãi'].map((type) {
+                  final isSel = _selectedNotifType == type;
+                  return ChoiceChip(
+                    label: Text(type),
+                    selected: isSel,
+                    selectedColor: const Color(0xFF1654F0),
+                    labelStyle: TextStyle(
+                      color: isSel ? Colors.white : const Color(0xFF334155),
+                      fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 12.5,
+                    ),
+                    onSelected: (_) => setState(() => _selectedNotifType = type),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+
+              const Text('Tiêu đề *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _notifTitleController,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Ví dụ: Cập nhật tin bão mới nhất hôm nay...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              const Text('Nội dung chi tiết *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _notifBodyController,
+                maxLines: 3,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Nội dung thông báo gửi đến người dùng...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Xem trước Live Preview
+              const Text(
+                'Xem trước thông báo (Live Preview):',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/app_icon.jpg',
+                        width: 38,
+                        height: 38,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 38,
+                          height: 38,
+                          color: const Color(0xFF1E60F2),
+                          child: const Icon(Icons.public, color: Colors.white, size: 22),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'DAILY NEWS • $_selectedNotifType',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1E60F2)),
+                              ),
+                              const Text('Vừa xong', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _notifTitleController.text.trim().isNotEmpty
+                                ? _notifTitleController.text.trim()
+                                : 'Tiêu đề thông báo...',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _notifBodyController.text.trim().isNotEmpty
+                                ? _notifBodyController.text.trim()
+                                : 'Nội dung thông báo...',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    if (_notifTitleController.text.trim().isEmpty || _notifBodyController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng nhập đầy đủ tiêu đề và nội dung thông báo!'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+
+                    final now = DateTime.now();
+                    setState(() {
+                      _broadcastNotifications.insert(0, {
+                        'title': _notifTitleController.text.trim(),
+                        'body': _notifBodyController.text.trim(),
+                        'type': _selectedNotifType,
+                        'sentTime': '${now.hour}:${now.minute < 10 ? '0' : ''}${now.minute}',
+                      });
+                      _notifTitleController.clear();
+                      _notifBodyController.clear();
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đã phát sóng thông báo thành công!'), backgroundColor: Colors.green),
+                    );
+                  },
+                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 19),
+                  label: const Text('Phát sóng thông báo ngay', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1654F0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        if (_broadcastNotifications.isNotEmpty) ...[
+          const Text('Thông báo đã phát sóng trong phiên:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          const SizedBox(height: 10),
+          ..._broadcastNotifications.map((n) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.mark_email_read_rounded, color: Color(0xFF10B981), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(n['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(n['body'] as String, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                      ],
+                    ),
+                  ),
+                  Text(n['sentTime'] as String, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 6. TAB: THỐNG KÊ & BÁO CÁO THỰC TẾ (Tính toán trực tiếp từ dữ liệu)
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildReportStatisticsTab(NewsProvider news, FavoritesProvider fav) {
+    final articles = news.articles;
+    final total = articles.length;
+
+    // Đếm số bài thực tế theo nguồn báo
+    final vnExpressCount = articles.where((a) => a.source.toLowerCase().contains('vnexpress')).length;
+    final tuoiTreCount = articles.where((a) => a.source.toLowerCase().contains('tuổi trẻ') || a.source.toLowerCase().contains('tuoitre')).length;
+    final thanhNienCount = articles.where((a) => a.source.toLowerCase().contains('thanh niên') || a.source.toLowerCase().contains('thanhnien')).length;
+    final adminCount = total - vnExpressCount - tuoiTreCount - thanhNienCount;
+
+    // Tính tỷ lệ % bài có hình ảnh
+    final hasImageCount = articles.where((a) => a.imageUrl != null && a.imageUrl!.isNotEmpty).length;
+    final imageRatio = total > 0 ? (hasImageCount / total) : 0.0;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Card thống kê nguồn báo thực tế
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Phân bổ nguồn báo thực tế',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                  Text('Tổng $total bài', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2))),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              if (total > 0) ...[
+                _buildRealProgressRow('VnExpress RSS', vnExpressCount, total, const Color(0xFF991B1B)),
+                const SizedBox(height: 12),
+                _buildRealProgressRow('Tuổi Trẻ Online', tuoiTreCount, total, const Color(0xFF0284C7)),
+                const SizedBox(height: 12),
+                _buildRealProgressRow('Báo Thanh Niên', thanhNienCount, total, const Color(0xFF16A34A)),
+                if (adminCount > 0) ...[
+                  const SizedBox(height: 12),
+                  _buildRealProgressRow('Biên tập Admin', adminCount, total, const Color(0xFF8B5CF6)),
+                ],
+              ] else
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text('Chưa có bài viết nào được nạp'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Card chất lượng nội dung
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chỉ số nội dung & Tương tác thực tế',
+                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildRealStatBox(
+                      title: 'Bài có hình ảnh',
+                      value: '$hasImageCount / $total',
+                      percent: '${(imageRatio * 100).toStringAsFixed(1)}%',
+                      icon: Icons.image_rounded,
+                      color: const Color(0xFF2563EB),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildRealStatBox(
+                      title: 'Đã lưu yêu thích',
+                      value: '${fav.favorites.length} bài',
+                      percent: total > 0 ? '${((fav.favorites.length / total) * 100).toStringAsFixed(1)}%' : '0%',
+                      icon: Icons.favorite_rounded,
+                      color: const Color(0xFFEF4444),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRealProgressRow(String name, int count, int total, Color color) {
+    final ratio = total > 0 ? (count / total) : 0.0;
+    final percent = (ratio * 100).toStringAsFixed(1);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('$name ($count bài)', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            Text('$percent%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 8,
+            backgroundColor: const Color(0xFFF1F5F9),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRealStatBox({
+    required String title,
+    required String value,
+    required String percent,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+              Icon(icon, color: color, size: 20),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          const SizedBox(height: 2),
+          Text('Tỷ lệ: $percent', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCard({
+    required String title,
+    required String value,
+    required String subText,
+    required IconData icon,
+    required Color color,
+    required List<Color> bgGradient,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: bgGradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: Icon(icon, color: color, size: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color, letterSpacing: -0.5)),
+          const SizedBox(height: 4),
+          Text(subText, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color.withOpacity(0.85))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionBtn({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 17, color: color),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CUSTOM PAINTER: VẼ BIỂU ĐỒ TỪ SỐ LƯỢNG BÀI VIẾT THỰC TẾ
+// ══════════════════════════════════════════════════════════════════
+class _RealNewsDistributionChartPainter extends CustomPainter {
+  final List<Article> articles;
+
+  _RealNewsDistributionChartPainter({required this.articles});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Đếm số lượng bài viết thật theo 7 ngày trong tuần (1: T2 -> 7: CN)
+    final dayCounts = List<int>.filled(7, 0);
+
+    for (final a in articles) {
+      if (a.publishedAt != null) {
+        final weekday = a.publishedAt!.weekday; // 1 = Mon, 7 = Sun
+        if (weekday >= 1 && weekday <= 7) {
+          dayCounts[weekday - 1]++;
+        }
+      }
+    }
+
+    final maxVal = dayCounts.reduce((curr, next) => curr > next ? curr : next);
+    final divisor = maxVal > 0 ? maxVal.toDouble() : 1.0;
+
+    final dx = w / 6;
+    final coords = <Offset>[];
+
+    for (int i = 0; i < 7; i++) {
+      final x = i * dx;
+      final normalized = maxVal > 0 ? (dayCounts[i] / divisor) : 0.2;
+      final y = h - (normalized * (h - 30) + 15);
+      coords.add(Offset(x, y));
+    }
+
+    // Vẽ lưới ngang
+    final gridPaint = Paint()
+      ..color = const Color(0xFFF1F5F9)
+      ..strokeWidth = 1.0;
+    for (int i = 1; i <= 3; i++) {
+      final y = h * i / 4;
+      canvas.drawLine(Offset(0, y), Offset(w, y), gridPaint);
+    }
+
+    // Vẽ đường cong spline
+    final path = Path();
+    final fillPath = Path();
+
+    path.moveTo(coords[0].dx, coords[0].dy);
+    fillPath.moveTo(coords[0].dx, h);
+    fillPath.lineTo(coords[0].dx, coords[0].dy);
+
+    for (int i = 0; i < coords.length - 1; i++) {
+      final p0 = coords[i];
+      final p1 = coords[i + 1];
+      final ctrl1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final ctrl2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      path.cubicTo(ctrl1.dx, ctrl1.dy, ctrl2.dx, ctrl2.dy, p1.dx, p1.dy);
+      fillPath.cubicTo(ctrl1.dx, ctrl1.dy, ctrl2.dx, ctrl2.dy, p1.dx, p1.dy);
+    }
+
+    fillPath.lineTo(coords.last.dx, h);
+    fillPath.close();
+
+    // Fill gradient
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          const Color(0xFF1E60F2).withOpacity(0.25),
+          const Color(0xFF1E60F2).withOpacity(0.01),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+
+    canvas.drawPath(fillPath, fillPaint);
+
+    // Line stroke
+    final linePaint = Paint()
+      ..color = const Color(0xFF1654F0)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawPath(path, linePaint);
+
+    // Dots & số lượng thật
+    final dotPaint = Paint()..color = const Color(0xFF1654F0);
+    final dotInner = Paint()..color = Colors.white;
+
+    for (int i = 0; i < coords.length; i++) {
+      final pt = coords[i];
+      canvas.drawCircle(pt, 5, dotPaint);
+      canvas.drawCircle(pt, 2.5, dotInner);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RealNewsDistributionChartPainter oldDelegate) {
+    return oldDelegate.articles != articles;
+  }
+}
