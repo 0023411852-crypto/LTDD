@@ -42,6 +42,21 @@ class AuthProvider extends ChangeNotifier {
         userEmail.endsWith('@admin.portal');
   }
 
+  /// Tự động đăng nhập hoặc tạo tài khoản Admin mặc định
+  Future<bool> signInAsAdmin() async {
+    const adminEmail = 'admin@gmail.com';
+    const adminPass = 'Admin@123456';
+    const adminName = 'Quản trị viên Hệ thống';
+
+    // 1. Thử đăng nhập trước
+    bool ok = await signIn(adminEmail, adminPass);
+    if (ok) return true;
+
+    // 2. Nếu chưa có trên Firebase Auth, tự tạo mới
+    ok = await register(adminEmail, adminPass, name: adminName);
+    return ok;
+  }
+
   AuthProvider() {
     try {
       _auth = FirebaseAuth.instance;

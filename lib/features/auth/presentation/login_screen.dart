@@ -112,6 +112,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _loginQuickAdmin() async {
+    setState(() => _loading = true);
+    final auth = context.read<AuthProvider>();
+    final success = await auth.signInAsAdmin();
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (success) {
+      _navigateAfterAuth('Đăng nhập Quản trị viên (Admin) thành công!');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage.isNotEmpty
+              ? auth.errorMessage
+              : 'Không thể đăng nhập tài khoản Admin.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _signInWithFacebook() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -672,6 +692,32 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+
+                      if (!_isRegister) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _loading ? null : _loginQuickAdmin,
+                          icon: const Icon(Icons.admin_panel_settings_rounded,
+                              color: Color(0xFF0D9488), size: 20),
+                          label: const Text(
+                            '⚡ Đăng nhập nhanh với tài khoản Admin',
+                            style: TextStyle(
+                              color: Color(0xFF0D9488),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                                color: Color(0xFF0D9488), width: 1.2),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24)),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 12, horizontal: 16),
+                            backgroundColor: Colors.white.withOpacity(0.85),
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 18),
 
