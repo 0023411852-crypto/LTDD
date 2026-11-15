@@ -308,9 +308,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty)
+                        if (v == null || v.trim().isEmpty) {
                           return 'Vui lòng nhập email';
-                        if (!v.contains('@')) return 'Email không hợp lệ';
+                        }
+                        if (!v.contains('@')) {
+                          return 'Email không hợp lệ';
+                        }
                         return null;
                       },
                     ),

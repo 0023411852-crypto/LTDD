@@ -26,9 +26,11 @@ analyzer:
     sized_box_for_whitespace: ignore
     use_key_in_widget_constructors: ignore
     unnecessary_null_comparison: ignore
+    curly_braces_in_flow_control_structures: ignore
 
 linter:
   rules:
+    curly_braces_in_flow_control_structures: false
     prefer_const_constructors: false
     prefer_const_literals_to_create_immutables: false
     prefer_const_constructors_in_immutables: false

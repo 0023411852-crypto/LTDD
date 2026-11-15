@@ -74,7 +74,10 @@ class ProfileScreen extends StatelessWidget {
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
-                            child: const Text('Đăng nhập', fontSize: 13),
+                            child: const Text(
+                              'Đăng nhập',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                         ],
                       ],
@@ -280,7 +283,4 @@ class _MenuItem extends StatelessWidget {
   }
 }
 
-// Extension để hỗ trợ cú pháp fontSize trong Text widget
-extension on Text {
-  Text get _ => this;
-}
+

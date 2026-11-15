@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../favorites/presentation/favorites_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../news/presentation/news_list_screen.dart';
