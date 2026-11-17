@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../utils/app_colors.dart';
+import '../../../models/app_notification.dart';
+import '../../../features/auth/providers/auth_provider.dart';
+import '../providers/notifications_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -10,210 +12,239 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // Demo items — clearly labeled as local/demo, not server-delivered
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'id': '1',
-      'title': 'Dự báo thời tiết hôm nay',
-      'body':
-          'Thời tiết nhiều mây, có mưa rải rác buổi chiều. Hãy mang theo áo mưa.',
-      'time': '15 phút trước',
-      'type': 'weather',
-      'read': false,
-    },
-    {
-      'id': '2',
-      'title': 'Tin nổi bật buổi sáng',
-      'body':
-          'Tổng hợp sự kiện kinh tế và xã hội đáng chú ý trong ngày đã sẵn sàng.',
-      'time': '2 giờ trước',
-      'type': 'news',
-      'read': false,
-    },
-    {
-      'id': '3',
-      'title': 'Chào mừng đến Daily News & Weather Portal',
-      'body':
-          'Khám phá tin tức từ các báo lớn và theo dõi thời tiết chuẩn xác.',
-      'time': 'Hôm qua',
-      'type': 'system',
-      'read': true,
-    },
-  ];
-
-  void _markAllRead() {
-    setState(() {
-      for (final n in _notifications) {
-        n['read'] = true;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.uid.isNotEmpty) {
+        context.read<NotificationsProvider>().load(auth.uid);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final unread = _notifications.where((n) => n['read'] == false).length;
+    final provider = context.watch<NotificationsProvider>();
     final cs = Theme.of(context).colorScheme;
+    final auth = context.watch<AuthProvider>();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            unread > 0 ? 'Thông báo ($unread chưa đọc)' : 'Thông báo'),
+          provider.unreadCount > 0
+              ? 'Thông báo (${provider.unreadCount})'
+              : 'Thông báo',
+        ),
         actions: [
-          if (unread > 0)
+          if (provider.unreadCount > 0)
             TextButton(
-              onPressed: _markAllRead,
+              onPressed: provider.markAllRead,
               child: const Text('Đọc tất cả'),
             ),
-          const SizedBox(width: 4),
         ],
       ),
-      body: Column(
-        children: [
-          // Label rõ ràng: đây là demo local, không phải server push
-          Container(
-            width: double.infinity,
-            color: cs.surfaceContainerHighest,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
+      body: !auth.isAuthenticated
+          ? _EmptyState(
+              icon: Icons.lock_outline_rounded,
+              title: 'Đăng nhập để xem thông báo',
+              subtitle: 'Thông báo cá nhân sẽ được đồng bộ trên các thiết bị.',
+            )
+          : Column(
               children: [
-                Icon(Icons.info_outline_rounded,
-                    size: 14, color: cs.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  'Thông báo demo — chưa kết nối server push',
-                  style: TextStyle(
-                      fontSize: 11.5, color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _notifications.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                if (provider.notifications.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          cs.primary.withOpacity(0.14),
+                          cs.primary.withOpacity(0.04),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
                       children: [
-                        Icon(Icons.notifications_none_outlined,
-                            size: 56, color: cs.outline),
-                        const SizedBox(height: 16),
-                        Text('Không có thông báo',
-                            style: Theme.of(context).textTheme.titleMedium),
+                        Icon(Icons.mark_email_unread_rounded,
+                            color: cs.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          provider.unreadCount == 0
+                              ? 'Bạn đã xem hết thông báo'
+                              : '${provider.unreadCount} thông báo mới',
+                          style: TextStyle(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    itemCount: _notifications.length,
-                    separatorBuilder: (_, __) =>
-                        Divider(height: 1, color: cs.outlineVariant),
-                    itemBuilder: (context, index) {
-                      final item = _notifications[index];
-                      return _NotifTile(
-                        item: item,
-                        onTap: () => setState(() => item['read'] = true),
-                      );
-                    },
                   ),
-          ),
-        ],
+                Expanded(child: _buildBody(context, provider, cs)),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    NotificationsProvider provider,
+    ColorScheme cs,
+  ) {
+    if (provider.status == NotificationsStatus.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (provider.status == NotificationsStatus.error) {
+      return _EmptyState(
+        icon: Icons.cloud_off_rounded,
+        title: 'Không tải được thông báo',
+        subtitle: provider.errorMessage,
+        action: FilledButton(
+          onPressed: () {
+            final uid = context.read<AuthProvider>().uid;
+            context.read<NotificationsProvider>().load(uid);
+          },
+          child: const Text('Thử lại'),
+        ),
+      );
+    }
+    if (provider.notifications.isEmpty) {
+      return _EmptyState(
+        icon: Icons.notifications_none_rounded,
+        title: 'Chưa có thông báo',
+        subtitle: 'Các cập nhật mới sẽ xuất hiện tại đây.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => provider.load(context.read<AuthProvider>().uid),
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: provider.notifications.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final item = provider.notifications[index];
+          return _NotificationCard(
+            notification: item,
+            onTap: () => provider.markRead(item),
+            colorScheme: cs,
+          );
+        },
       ),
     );
   }
 }
 
-class _NotifTile extends StatelessWidget {
-  final Map<String, dynamic> item;
+class _NotificationCard extends StatelessWidget {
+  final AppNotification notification;
   final VoidCallback onTap;
+  final ColorScheme colorScheme;
 
-  const _NotifTile({required this.item, required this.onTap});
+  const _NotificationCard({
+    required this.notification,
+    required this.onTap,
+    required this.colorScheme,
+  });
 
-  IconData _typeIcon(String type) => switch (type) {
-        'weather' => Icons.wb_sunny_outlined,
-        'news' => Icons.newspaper_outlined,
-        _ => Icons.notifications_outlined,
-      };
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (notification.type) {
+      'weather' => Icons.wb_sunny_outlined,
+      'news' => Icons.newspaper_outlined,
+      _ => Icons.notifications_outlined,
+    };
+    return Material(
+      color: notification.isRead
+          ? colorScheme.surface
+          : colorScheme.primaryContainer.withOpacity(0.5),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: TextStyle(
+                        fontWeight: notification.isRead
+                            ? FontWeight.w600
+                            : FontWeight.w800,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      notification.body,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              if (!notification.isRead)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, top: 5),
+                  child: CircleAvatar(
+                    radius: 4,
+                    backgroundColor: colorScheme.primary,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget? action;
+
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.action,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isRead = item['read'] as bool;
-    final type = item['type'] as String;
-
-    return InkWell(
-      onTap: onTap,
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Dot unread
-            Padding(
-              padding: const EdgeInsets.only(top: 6, right: 8),
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isRead ? Colors.transparent : cs.primary,
-                ),
-              ),
+            Icon(icon, size: 56, color: cs.primary),
+            const SizedBox(height: 16),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: cs.onSurfaceVariant),
             ),
-            // Icon
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: type == 'weather'
-                    ? Colors.orange.shade50
-                    : cs.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                _typeIcon(type),
-                size: 18,
-                color: type == 'weather'
-                    ? Colors.orange.shade700
-                    : cs.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        item['title'] as String,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isRead
-                              ? FontWeight.w500
-                              : FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      Text(
-                        item['time'] as String,
-                        style: TextStyle(
-                            fontSize: 11, color: cs.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item['body'] as String,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13, color: cs.onSurfaceVariant, height: 1.4),
-                  ),
-                ],
-              ),
-            ),
+            if (action != null) ...[
+              const SizedBox(height: 16),
+              action!,
+            ],
           ],
         ),
       ),

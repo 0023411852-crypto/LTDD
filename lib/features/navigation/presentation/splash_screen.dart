@@ -49,12 +49,24 @@ class _SplashScreenState extends State<SplashScreen>
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: cs.surface,
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: SafeArea(
-          child: Column(
-            children: [
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              cs.primary,
+              cs.primary.withOpacity(0.78),
+              cs.surface,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0, 0.42, 1],
+          ),
+        ),
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: SafeArea(
+            child: Column(
+              children: [
               const Spacer(flex: 2),
               // Logo
               Center(
@@ -80,20 +92,30 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const SizedBox(height: 20),
               Text(
-                'Daily News & Weather',
+                'Tin tức & Thời tiết',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
                     ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
               Text(
-                'Portal',
+                'Cập nhật mỗi ngày',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: cs.primary,
                     ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Stay informed • Stay prepared',
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const Spacer(flex: 2),
               // Loading bar
@@ -112,7 +134,8 @@ class _SplashScreenState extends State<SplashScreen>
                     TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 32),
-            ],
+              ],
+            ),
           ),
         ),
       ),

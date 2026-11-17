@@ -88,7 +88,8 @@ void main() {
   });
 
   group('Widget Navigation Test', () {
-    testWidgets('MainNavScreen renders all 5 navigation tabs', (tester) async {
+    testWidgets('MainNavScreen renders the four primary navigation tabs',
+        (tester) async {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -108,7 +109,6 @@ void main() {
       expect(find.text('Trang chủ'), findsOneWidget);
       expect(find.text('Tin tức'), findsOneWidget);
       expect(find.text('Thời tiết'), findsOneWidget);
-      expect(find.text('Yêu thích'), findsOneWidget);
       expect(find.text('Tài khoản'), findsOneWidget);
     });
   });

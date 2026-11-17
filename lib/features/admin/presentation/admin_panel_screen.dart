@@ -39,6 +39,26 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     super.dispose();
   }
 
+  // ── Màu theo theme (Light/Dark) cho toàn bộ màn Admin ──────────────
+  // Trước đây màn Admin ghim cứng nền trắng / chữ đen nên bật Dark mode
+  // vẫn trắng chói. Nay mọi màu nền / thẻ / chữ / viền đều đi qua các
+  // getter này (cùng tông với AppTheme: nền tối 0B132B, thẻ 1C2541).
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+  Color get _bgColor =>
+      _isDarkMode ? const Color(0xFF0B132B) : const Color(0xFFF1F5F9);
+  Color get _surfaceColor =>
+      _isDarkMode ? const Color(0xFF1C2541) : Colors.white;
+  Color get _textColor =>
+      _isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  Color get _subTextColor =>
+      _isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+  Color get _borderColor =>
+      _isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+  Color get _chipColor =>
+      _isDarkMode ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+  Color get _inputFillColor =>
+      _isDarkMode ? const Color(0xFF0B132B) : const Color(0xFFF8FAFC);
+
   String _getTabTitle() {
     switch (_currentTab) {
       case 0:
@@ -109,7 +129,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final realCategories = newsProvider.categories;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: _bgColor,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF1654F0),
@@ -120,7 +140,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               color: Colors.white.withOpacity(0.18),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+            child: const Icon(Icons.arrow_back_rounded,
+                color: Colors.white, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -154,7 +175,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               await newsProvider.fetchNews();
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã đồng bộ lại dữ liệu tin tức từ RSS!'), backgroundColor: Colors.green),
+                const SnackBar(
+                    content: Text('Đã đồng bộ lại dữ liệu tin tức từ RSS!'),
+                    backgroundColor: Colors.green),
               );
             },
           ),
@@ -174,7 +197,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 child: IndexedStack(
                   index: _currentTab,
                   children: [
-                    _buildDashboardTab(newsProvider, authProvider, favProvider, weatherProvider),
+                    _buildDashboardTab(newsProvider, authProvider, favProvider,
+                        weatherProvider),
                     _buildNewsManagementTab(newsProvider),
                     _buildCategoryManagementTab(newsProvider),
                     _buildUserManagementTab(authProvider),
@@ -204,7 +228,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     ];
 
     return Container(
-      color: Colors.white,
+      color: _surfaceColor,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -219,9 +243,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 borderRadius: BorderRadius.circular(20),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF1654F0) : const Color(0xFFF1F5F9),
+                    color: isSelected ? const Color(0xFF1654F0) : _chipColor,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: isSelected
                         ? [
@@ -239,15 +264,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       Icon(
                         tabs[idx]['icon'] as IconData,
                         size: 17,
-                        color: isSelected ? Colors.white : const Color(0xFF64748B),
+                        color: isSelected ? Colors.white : _subTextColor,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         tabs[idx]['label'] as String,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                          color: isSelected ? Colors.white : const Color(0xFF475569),
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w600,
+                          color: isSelected ? Colors.white : _subTextColor,
                         ),
                       ),
                     ],
@@ -309,7 +335,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   radius: 26,
                   backgroundColor: const Color(0xFFDBEAFE),
                   child: Icon(
-                    auth.isAuthenticated ? Icons.person_rounded : Icons.person_outline_rounded,
+                    auth.isAuthenticated
+                        ? Icons.person_rounded
+                        : Icons.person_outline_rounded,
                     color: const Color(0xFF1654F0),
                     size: 30,
                   ),
@@ -324,7 +352,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       children: [
                         Flexible(
                           child: Text(
-                            auth.isAuthenticated ? auth.displayName : 'Admin (Chế độ khách)',
+                            auth.isAuthenticated
+                                ? auth.displayName
+                                : 'Admin (Chế độ khách)',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -336,22 +366,31 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: auth.isAuthenticated ? const Color(0xFF10B981) : Colors.amber.shade700,
+                            color: auth.isAuthenticated
+                                ? const Color(0xFF10B981)
+                                : Colors.amber.shade700,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
                             auth.isAuthenticated ? 'ONLINE' : 'GUEST',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                            style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      auth.isAuthenticated ? auth.email : 'Chưa đăng nhập tài khoản Firebase',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFFDBEAFE)),
+                      auth.isAuthenticated
+                          ? auth.email
+                          : 'Chưa đăng nhập tài khoản Firebase',
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFFDBEAFE)),
                     ),
                   ],
                 ),
@@ -419,16 +458,19 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Tác vụ quản trị nhanh',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: _textColor),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -473,9 +515,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,27 +527,34 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'Phân bổ tin bài thực tế',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: _textColor),
                       ),
                       SizedBox(height: 2),
                       Text(
                         'Đếm số lượng bài viết theo ngày đăng (publishedAt)',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        style: TextStyle(fontSize: 12, color: _subTextColor),
                       ),
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Tổng $articleCount bài',
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2)),
+                      style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E60F2)),
                     ),
                   ),
                 ],
@@ -526,8 +575,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: const ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) {
-                  return Text(d, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)));
+                children:
+                    const ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) {
+                  return Text(d,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8)));
                 }).toList(),
               ),
             ],
@@ -561,32 +615,37 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         children: [
           // Search & Filter header
           Container(
-            color: Colors.white,
+            color: _surfaceColor,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Column(
               children: [
                 TextField(
                   onChanged: (val) => setState(() => _newsSearchQuery = val),
                   decoration: InputDecoration(
-                    hintText: 'Tìm kiếm trên ${allArticles.length} bài viết thật...',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13.5),
-                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF1E60F2), size: 22),
+                    hintText:
+                        'Tìm kiếm trên ${allArticles.length} bài viết thật...',
+                    hintStyle:
+                        TextStyle(color: Colors.grey.shade400, fontSize: 13.5),
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: Color(0xFF1E60F2), size: 22),
                     suffixIcon: _newsSearchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 18),
-                            onPressed: () => setState(() => _newsSearchQuery = ''),
+                            onPressed: () =>
+                                setState(() => _newsSearchQuery = ''),
                           )
                         : null,
                     filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    fillColor: _inputFillColor,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      borderSide: BorderSide(color: _borderColor),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      borderSide: BorderSide(color: _borderColor),
                     ),
                   ),
                 ),
@@ -607,14 +666,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         label: Text('$tab ($count)'),
                         selected: isSel,
                         onSelected: (_) => setState(() => _newsFilter = tab),
-                        selectedColor: const Color(0xFF1E60F2).withOpacity(0.12),
+                        selectedColor:
+                            const Color(0xFF1E60F2).withOpacity(0.12),
                         checkmarkColor: const Color(0xFF1E60F2),
                         labelStyle: TextStyle(
                           fontSize: 12.5,
                           fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
-                          color: isSel ? const Color(0xFF1E60F2) : const Color(0xFF475569),
+                          color:
+                              isSel ? const Color(0xFF1E60F2) : _subTextColor,
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
                       ),
                     );
                   }).toList(),
@@ -630,13 +692,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.article_outlined, size: 54, color: Color(0xFFCBD5E1)),
+                        const Icon(Icons.article_outlined,
+                            size: 54, color: Color(0xFFCBD5E1)),
                         const SizedBox(height: 12),
                         Text(
                           allArticles.isEmpty
                               ? 'Đang tải dữ liệu từ RSS...'
                               : 'Không tìm thấy bài viết nào phù hợp',
-                          style: const TextStyle(color: Color(0xFF64748B)),
+                          style: TextStyle(color: _subTextColor),
                         ),
                       ],
                     ),
@@ -646,15 +709,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final article = filtered[index];
-                      final isPending = _pendingArticleTitles.contains(article.title);
+                      final isPending =
+                          _pendingArticleTitles.contains(article.title);
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: _surfaceColor,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: _borderColor),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,18 +729,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                               child: Container(
                                 width: 80,
                                 height: 74,
-                                color: const Color(0xFFE2E8F0),
+                                color: _borderColor,
                                 child: article.imageUrl != null
                                     ? Image.network(
                                         article.imageUrl!,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const Icon(
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(
                                           Icons.image_not_supported_outlined,
                                           color: Color(0xFF94A3B8),
                                           size: 28,
                                         ),
                                       )
-                                    : const Icon(Icons.newspaper_rounded, color: Color(0xFF1E60F2), size: 30),
+                                    : const Icon(Icons.newspaper_rounded,
+                                        color: Color(0xFF1E60F2), size: 30),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -690,10 +756,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                     article.title,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
-                                      color: Color(0xFF0F172A),
+                                      color: _textColor,
                                       height: 1.3,
                                     ),
                                   ),
@@ -701,10 +767,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                   Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(6),
+                                          color: _chipColor,
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: Text(
                                           article.source,
@@ -720,7 +788,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                         article.publishedAt != null
                                             ? '${article.publishedAt!.day}/${article.publishedAt!.month}'
                                             : 'Gần đây',
-                                        style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF94A3B8)),
                                       ),
                                     ],
                                   ),
@@ -738,9 +808,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                   onTap: () {
                                     setState(() {
                                       if (isPending) {
-                                        _pendingArticleTitles.remove(article.title);
+                                        _pendingArticleTitles
+                                            .remove(article.title);
                                       } else {
-                                        _pendingArticleTitles.add(article.title);
+                                        _pendingArticleTitles
+                                            .add(article.title);
                                       }
                                     });
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -748,28 +820,39 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                         content: Text(isPending
                                             ? 'Đã duyệt bài viết "${article.title}"'
                                             : 'Đã chuyển bài viết sang Chờ duyệt'),
-                                        backgroundColor: isPending ? Colors.green : Colors.orange,
+                                        backgroundColor: isPending
+                                            ? Colors.green
+                                            : Colors.orange,
                                       ),
                                     );
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: !isPending ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+                                      color: !isPending
+                                          ? const Color(0xFFECFDF5)
+                                          : const Color(0xFFFFFBEB),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
                                         color: !isPending
-                                            ? const Color(0xFF10B981).withOpacity(0.3)
-                                            : const Color(0xFFF59E0B).withOpacity(0.3),
+                                            ? const Color(0xFF10B981)
+                                                .withOpacity(0.3)
+                                            : const Color(0xFFF59E0B)
+                                                .withOpacity(0.3),
                                       ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
-                                          !isPending ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
+                                          !isPending
+                                              ? Icons.check_circle_rounded
+                                              : Icons.hourglass_top_rounded,
                                           size: 13,
-                                          color: !isPending ? const Color(0xFF059669) : const Color(0xFFD97706),
+                                          color: !isPending
+                                              ? const Color(0xFF059669)
+                                              : const Color(0xFFD97706),
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
@@ -777,7 +860,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                           style: TextStyle(
                                             fontSize: 11.5,
                                             fontWeight: FontWeight.w800,
-                                            color: !isPending ? const Color(0xFF059669) : const Color(0xFFD97706),
+                                            color: !isPending
+                                                ? const Color(0xFF059669)
+                                                : const Color(0xFFD97706),
                                           ),
                                         ),
                                       ],
@@ -792,24 +877,43 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                     showDialog(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                        title: const Text('Xác nhận xóa bài viết', style: TextStyle(fontWeight: FontWeight.bold)),
-                                        content: Text('Xóa bài viết "${article.title}" khỏi hệ thống ứng dụng?'),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16)),
+                                        title: const Text(
+                                            'Xác nhận xóa bài viết',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        content: Text(
+                                            'Xóa bài viết "${article.title}" khỏi hệ thống ứng dụng?'),
                                         actions: [
-                                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+                                          TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx),
+                                              child: const Text('Hủy')),
                                           ElevatedButton(
-                                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-                                            onPressed: () {
+                                            style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0xFFEF4444)),
+                                            onPressed: () async {
                                               Navigator.pop(ctx);
                                               news.removeArticle(article.title);
                                               setState(() {
-                                                _pendingArticleTitles.remove(article.title);
+                                                _pendingArticleTitles
+                                                    .remove(article.title);
                                               });
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Đã xóa bài viết khỏi ứng dụng'), backgroundColor: Colors.red),
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                    content: Text(
+                                                        'Đã xóa bài viết khỏi ứng dụng'),
+                                                    backgroundColor:
+                                                        Colors.red),
                                               );
                                             },
-                                            child: const Text('Xóa ngay', style: TextStyle(color: Colors.white)),
+                                            child: const Text('Xóa ngay',
+                                                style: TextStyle(
+                                                    color: Colors.white)),
                                           ),
                                         ],
                                       ),
@@ -818,7 +922,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                   child: const Padding(
                                     padding: EdgeInsets.all(4),
-                                    child: Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 19),
+                                    child: Icon(Icons.delete_outline_rounded,
+                                        color: Color(0xFFEF4444), size: 19),
                                   ),
                                 ),
                               ],
@@ -834,7 +939,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF1654F0),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Đăng tin mới', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+        label: const Text('Đăng tin mới',
+            style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
         onPressed: () => _showAddArticleDialog(context),
       ),
     );
@@ -845,15 +951,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final subtitleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final authorCtrl = TextEditingController(text: 'Ban Biên Tập');
+    final tagsCtrl = TextEditingController();
+    final inlineImagesCtrl = TextEditingController();
     final imageUrlCtrl = TextEditingController();
     final linkCtrl = TextEditingController();
     String selectedCatLabel = 'Thời sự';
-    final catOptions = ['Thời sự', 'Công nghệ', 'Kinh tế', 'Thể thao', 'Thế giới', 'Giải trí', 'Sức khỏe'];
+    final catOptions = [
+      'Thời sự',
+      'Công nghệ',
+      'Kinh tế',
+      'Thể thao',
+      'Thế giới',
+      'Giải trí',
+      'Sức khỏe'
+    ];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -882,20 +998,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             color: const Color(0xFF1654F0).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.post_add_rounded, color: Color(0xFF1654F0), size: 20),
+                          child: const Icon(Icons.post_add_rounded,
+                              color: Color(0xFF1654F0), size: 20),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
+                        Text(
                           'Đăng bài viết mới',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: _textColor),
                         ),
                       ],
                     ),
-                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx2)),
+                    IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(ctx2)),
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text('Bài viết sẽ hiển thị ngay trên toàn bộ ứng dụng', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text('Bài viết sẽ hiển thị ngay trên toàn bộ ứng dụng',
+                    style: TextStyle(fontSize: 12, color: _subTextColor)),
                 const Divider(height: 20),
 
                 // ── Tiêu đề ──
@@ -903,8 +1026,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: titleCtrl,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  decoration: _dialogInputDeco('Nhập tiêu đề tin tức nổi bật...', Icons.title_rounded),
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600),
+                  decoration: _dialogInputDeco(
+                      'Nhập tiêu đề tin tức nổi bật...', Icons.title_rounded),
                 ),
                 const SizedBox(height: 12),
 
@@ -913,7 +1038,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: subtitleCtrl,
-                  decoration: _dialogInputDeco('Dòng mô tả phụ bên dưới tiêu đề...', Icons.short_text_rounded),
+                  decoration: _dialogInputDeco(
+                      'Dòng mô tả phụ bên dưới tiêu đề...',
+                      Icons.short_text_rounded),
                 ),
                 const SizedBox(height: 12),
 
@@ -929,18 +1056,22 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       onTap: () => setModalState(() => selectedCatLabel = cat),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: isSel ? const Color(0xFF1654F0) : const Color(0xFFF1F5F9),
+                          color: isSel ? const Color(0xFF1654F0) : _chipColor,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isSel ? const Color(0xFF1654F0) : const Color(0xFFE2E8F0)),
+                          border: Border.all(
+                              color: isSel
+                                  ? const Color(0xFF1654F0)
+                                  : _borderColor),
                         ),
                         child: Text(
                           cat,
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
-                            color: isSel ? Colors.white : const Color(0xFF475569),
+                            color: isSel ? Colors.white : _subTextColor,
                           ),
                         ),
                       ),
@@ -949,20 +1080,33 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ),
                 const SizedBox(height: 14),
 
+                _buildDialogLabel('Tags / Từ khóa'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: tagsCtrl,
+                  decoration: _dialogInputDeco(
+                    'Ví dụ: công nghệ, AI, Việt Nam (cách nhau bằng dấu phẩy)',
+                    Icons.sell_outlined,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 // ── URL Ảnh đại diện ──
                 _buildDialogLabel('URL Ảnh đại diện (thumbnail)'),
                 const SizedBox(height: 6),
                 TextField(
                   controller: imageUrlCtrl,
                   keyboardType: TextInputType.url,
-                  decoration: _dialogInputDeco('https://example.com/image.jpg', Icons.image_rounded),
+                  decoration: _dialogInputDeco(
+                      'https://example.com/image.jpg', Icons.image_rounded),
                 ),
                 // Preview ảnh
                 ValueListenableBuilder<TextEditingValue>(
                   valueListenable: imageUrlCtrl,
                   builder: (_, val, __) {
                     final url = val.text.trim();
-                    if (url.isEmpty || !url.startsWith('http')) return const SizedBox.shrink();
+                    if (url.isEmpty || !url.startsWith('http'))
+                      return const SizedBox.shrink();
                     return Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: ClipRRect(
@@ -981,9 +1125,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.broken_image_outlined, color: Color(0xFFEF4444), size: 18),
+                                Icon(Icons.broken_image_outlined,
+                                    color: Color(0xFFEF4444), size: 18),
                                 SizedBox(width: 6),
-                                Text('URL ảnh không hợp lệ hoặc không tải được', style: TextStyle(fontSize: 12, color: Color(0xFFEF4444))),
+                                Text('URL ảnh không hợp lệ hoặc không tải được',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFFEF4444))),
                               ],
                             ),
                           ),
@@ -991,8 +1139,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             if (loadingProgress == null) return child;
                             return Container(
                               height: 140,
-                              color: const Color(0xFFF1F5F9),
-                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              color: _chipColor,
+                              child: const Center(
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2)),
                             );
                           },
                         ),
@@ -1002,13 +1152,28 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ),
                 const SizedBox(height: 12),
 
+                _buildDialogLabel('Ảnh trong nội dung'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: inlineImagesCtrl,
+                  keyboardType: TextInputType.multiline,
+                  maxLines: 2,
+                  decoration: _dialogInputDeco(
+                    'Dán nhiều URL ảnh, cách nhau bằng dấu phẩy',
+                    Icons.collections_outlined,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 // ── Nội dung tóm tắt ──
                 _buildDialogLabel('Nội dung tóm tắt', isRequired: true),
                 const SizedBox(height: 6),
                 TextField(
                   controller: descCtrl,
                   maxLines: 3,
-                  decoration: _dialogInputDeco('Mô tả chi tiết nội dung tin tức...', Icons.notes_rounded),
+                  decoration: _dialogInputDeco(
+                      'Mô tả chi tiết nội dung tin tức...',
+                      Icons.notes_rounded),
                 ),
                 const SizedBox(height: 12),
 
@@ -1017,7 +1182,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: authorCtrl,
-                  decoration: _dialogInputDeco('Ban Biên Tập, Tin Tức 24h...', Icons.person_rounded),
+                  decoration: _dialogInputDeco(
+                      'Ban Biên Tập, Tin Tức 24h...', Icons.person_rounded),
                 ),
                 const SizedBox(height: 12),
 
@@ -1027,55 +1193,94 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 TextField(
                   controller: linkCtrl,
                   keyboardType: TextInputType.url,
-                  decoration: _dialogInputDeco('https://vnexpress.net/...', Icons.link_rounded),
+                  decoration: _dialogInputDeco(
+                      'https://vnexpress.net/...', Icons.link_rounded),
                 ),
                 const SizedBox(height: 20),
 
                 // ── Nút đăng ──
                 ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     if (titleCtrl.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Vui lòng nhập tiêu đề bài viết'), backgroundColor: Colors.red),
+                        const SnackBar(
+                            content: Text('Vui lòng nhập tiêu đề bài viết'),
+                            backgroundColor: Colors.red),
                       );
                       return;
                     }
 
                     final newTitle = titleCtrl.text.trim();
                     final newDesc = [
-                      if (subtitleCtrl.text.trim().isNotEmpty) subtitleCtrl.text.trim(),
+                      if (subtitleCtrl.text.trim().isNotEmpty)
+                        subtitleCtrl.text.trim(),
                       if (descCtrl.text.trim().isNotEmpty) descCtrl.text.trim(),
                     ].join('\n\n').isNotEmpty
                         ? [
-                            if (subtitleCtrl.text.trim().isNotEmpty) subtitleCtrl.text.trim(),
-                            if (descCtrl.text.trim().isNotEmpty) descCtrl.text.trim(),
+                            if (subtitleCtrl.text.trim().isNotEmpty)
+                              subtitleCtrl.text.trim(),
+                            if (descCtrl.text.trim().isNotEmpty)
+                              descCtrl.text.trim(),
                           ].join('\n\n')
                         : newTitle;
                     final newAuthor = authorCtrl.text.trim().isEmpty
                         ? 'Admin / $selectedCatLabel'
-                        : '${authorCtrl.text.trim()} • $selectedCatLabel';
-                    final imgUrl = imageUrlCtrl.text.trim().isNotEmpty ? imageUrlCtrl.text.trim() : null;
-                    final link = linkCtrl.text.trim().isNotEmpty ? linkCtrl.text.trim() : 'https://news.google.com';
+                        : authorCtrl.text.trim();
+                    final tags = tagsCtrl.text
+                        .split(',')
+                        .map((tag) => tag.trim())
+                        .where((tag) => tag.isNotEmpty)
+                        .toSet()
+                        .toList();
+                    final inlineImageUrls = inlineImagesCtrl.text
+                        .split(',')
+                        .map((url) => url.trim())
+                        .where((url) => url.startsWith('http'))
+                        .toSet()
+                        .toList();
+                    final imgUrl = imageUrlCtrl.text.trim().isNotEmpty
+                        ? imageUrlCtrl.text.trim()
+                        : null;
+                    final link = linkCtrl.text.trim().isNotEmpty
+                        ? linkCtrl.text.trim()
+                        : 'https://news.google.com';
 
-                    context.read<NewsProvider>().addArticle(
-                          Article(
-                            title: newTitle,
-                            link: link,
-                            description: newDesc,
-                            imageUrl: imgUrl,
-                            source: newAuthor,
-                            publishedAt: DateTime.now(),
-                          ),
-                        );
+                    try {
+                      await context.read<NewsProvider>().addArticle(
+                            Article(
+                              title: newTitle,
+                              link: link,
+                              description: newDesc,
+                              imageUrl: imgUrl,
+                              source: newAuthor,
+                              publishedAt: DateTime.now(),
+                              category: selectedCatLabel,
+                              tags: tags,
+                              inlineImageUrls: inlineImageUrls,
+                            ),
+                          );
+                    } catch (error) {
+                      if (!ctx2.mounted) return;
+                      ScaffoldMessenger.of(ctx2).showSnackBar(
+                        SnackBar(
+                          content: Text('Không thể lưu bài viết: $error'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
 
                     Navigator.pop(ctx2);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Row(
                           children: [
-                            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                            const Icon(Icons.check_circle_rounded,
+                                color: Colors.white, size: 18),
                             const SizedBox(width: 8),
-                            Expanded(child: Text('Đã đăng bài "$newTitle" thành công!')),
+                            Expanded(
+                                child: Text(
+                                    'Đã đăng bài "$newTitle" thành công!')),
                           ],
                         ),
                         backgroundColor: Colors.green,
@@ -1086,10 +1291,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1654F0),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
-                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                  label: const Text('Đăng bài viết ngay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                  icon: const Icon(Icons.send_rounded,
+                      color: Colors.white, size: 18),
+                  label: const Text('Đăng bài viết ngay',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
                 ),
                 const SizedBox(height: 4),
               ],
@@ -1104,10 +1315,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildDialogLabel(String text, {bool isRequired = false}) {
     return Row(
       children: [
-        Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+        Text(text,
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: _textColor)),
         if (isRequired) ...[
           const SizedBox(width: 4),
-          const Text('*', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+          const Text('*',
+              style: TextStyle(
+                  color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
         ],
       ],
     );
@@ -1120,15 +1335,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFCBD5E1)),
       prefixIcon: Icon(icon, size: 18, color: const Color(0xFF94A3B8)),
       filled: true,
-      fillColor: const Color(0xFFF8FAFC),
+      fillColor: _inputFillColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderSide: BorderSide(color: _borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderSide: BorderSide(color: _borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -1146,56 +1361,86 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final isLoading = news.status == NewsStatus.loading;
 
     // Map icon cho từng danh mục
-    IconData _catIcon(String id) {
+    IconData catIcon(String id) {
       switch (id) {
-        case 'moi-nhat': return Icons.fiber_new_rounded;
-        case 'thoi-su': return Icons.public_rounded;
-        case 'the-gioi': return Icons.language_rounded;
-        case 'kinh-doanh': return Icons.trending_up_rounded;
-        case 'cong-nghe': return Icons.laptop_mac_rounded;
-        case 'the-thao': return Icons.sports_soccer_rounded;
-        case 'giai-tri': return Icons.movie_filter_rounded;
-        case 'suc-khoe': return Icons.favorite_rounded;
-        case 'tuoi-tre': return Icons.newspaper_rounded;
-        case 'thanh-nien': return Icons.article_rounded;
-        default: return Icons.category_rounded;
+        case 'moi-nhat':
+          return Icons.fiber_new_rounded;
+        case 'thoi-su':
+          return Icons.public_rounded;
+        case 'the-gioi':
+          return Icons.language_rounded;
+        case 'kinh-doanh':
+          return Icons.trending_up_rounded;
+        case 'cong-nghe':
+          return Icons.laptop_mac_rounded;
+        case 'the-thao':
+          return Icons.sports_soccer_rounded;
+        case 'giai-tri':
+          return Icons.movie_filter_rounded;
+        case 'suc-khoe':
+          return Icons.favorite_rounded;
+        case 'tuoi-tre':
+          return Icons.newspaper_rounded;
+        case 'thanh-nien':
+          return Icons.article_rounded;
+        default:
+          return Icons.category_rounded;
       }
     }
 
-    Color _catColor(String id) {
+    Color catColor(String id) {
       switch (id) {
-        case 'moi-nhat': return const Color(0xFFEF4444);
-        case 'thoi-su': return const Color(0xFF3B82F6);
-        case 'the-gioi': return const Color(0xFF8B5CF6);
-        case 'kinh-doanh': return const Color(0xFFF59E0B);
-        case 'cong-nghe': return const Color(0xFF06B6D4);
-        case 'the-thao': return const Color(0xFF10B981);
-        case 'giai-tri': return const Color(0xFFEC4899);
-        case 'suc-khoe': return const Color(0xFFEF4444);
-        case 'tuoi-tre': return const Color(0xFFEA580C);
-        case 'thanh-nien': return const Color(0xFF64748B);
-        default: return const Color(0xFF1E60F2);
+        case 'moi-nhat':
+          return const Color(0xFFEF4444);
+        case 'thoi-su':
+          return const Color(0xFF3B82F6);
+        case 'the-gioi':
+          return const Color(0xFF8B5CF6);
+        case 'kinh-doanh':
+          return const Color(0xFFF59E0B);
+        case 'cong-nghe':
+          return const Color(0xFF06B6D4);
+        case 'the-thao':
+          return const Color(0xFF10B981);
+        case 'giai-tri':
+          return const Color(0xFFEC4899);
+        case 'suc-khoe':
+          return const Color(0xFFEF4444);
+        case 'tuoi-tre':
+          return const Color(0xFFEA580C);
+        case 'thanh-nien':
+          return _subTextColor;
+        default:
+          return const Color(0xFF1E60F2);
       }
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: _bgColor,
       body: categories.isEmpty && !isLoading
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.category_outlined, size: 60, color: Color(0xFFCBD5E1)),
+                  const Icon(Icons.category_outlined,
+                      size: 60, color: Color(0xFFCBD5E1)),
                   const SizedBox(height: 14),
-                  const Text('Chưa tải được danh mục', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                  Text('Chưa tải được danh mục',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: _subTextColor)),
                   const SizedBox(height: 8),
-                  const Text('Kiểm tra kết nối internet', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                  const Text('Kiểm tra kết nối internet',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: () => news.fetchNews(),
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Thử lại'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1654F0), foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1654F0),
+                        foregroundColor: Colors.white),
                   ),
                 ],
               ),
@@ -1212,21 +1457,35 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       children: [
                         Text(
                           '${categories.length} danh mục RSS',
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: _textColor),
                         ),
-                        const Text('Chọn chuyên mục để ứng dụng hiển thị tin tức', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        Text('Chọn chuyên mục để ứng dụng hiển thị tin tức',
+                            style:
+                                TextStyle(fontSize: 12, color: _subTextColor)),
                       ],
                     ),
                     if (isLoading)
                       const SizedBox(
-                        width: 24, height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1654F0)),
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: Color(0xFF1654F0)),
                       )
                     else
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
-                        child: const Text('Nguồn: RSS', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2))),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(10)),
+                        child: const Text('Nguồn: RSS',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E60F2))),
                       ),
                   ],
                 ),
@@ -1243,12 +1502,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, color: Color(0xFF16A34A), size: 18),
+                      Icon(Icons.info_outline_rounded,
+                          color: Color(0xFF16A34A), size: 18),
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Nhấn "Chuyển sang" để ứng dụng tải và hiển thị tin tức từ chuyên mục đó.',
-                          style: TextStyle(fontSize: 12.5, color: Color(0xFF15803D)),
+                          style: TextStyle(
+                              fontSize: 12.5, color: Color(0xFF15803D)),
                         ),
                       ),
                     ],
@@ -1258,21 +1519,32 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 // ── Danh sách danh mục ──
                 ...categories.map((cat) {
                   final isSelected = selectedCat.id == cat.id;
-                  final color = _catColor(cat.id);
+                  final color = catColor(cat.id);
 
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
-                      color: isSelected ? color.withOpacity(0.06) : Colors.white,
+                      color:
+                          isSelected ? color.withOpacity(0.06) : _surfaceColor,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? color : const Color(0xFFE2E8F0),
+                        color: isSelected ? color : _borderColor,
                         width: isSelected ? 1.8 : 1.0,
                       ),
                       boxShadow: isSelected
-                          ? [BoxShadow(color: color.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 4))]
-                          : [const BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2))],
+                          ? [
+                              BoxShadow(
+                                  color: color.withOpacity(0.12),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4))
+                            ]
+                          : [
+                              const BoxShadow(
+                                  color: Color(0x08000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2))
+                            ],
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
@@ -1283,14 +1555,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           SnackBar(
                             content: Row(
                               children: [
-                                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                                const Icon(Icons.check_circle_rounded,
+                                    color: Colors.white, size: 18),
                                 const SizedBox(width: 8),
-                                Text('Đã chuyển sang chuyên mục "${cat.label}"'),
+                                Text(
+                                    'Đã chuyển sang chuyên mục "${cat.label}"'),
                               ],
                             ),
                             backgroundColor: color,
                             behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                           ),
                         );
                       },
@@ -1303,10 +1578,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: isSelected ? color : color.withOpacity(0.1),
+                                color:
+                                    isSelected ? color : color.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(14),
                               ),
-                              child: Icon(_catIcon(cat.id), color: isSelected ? Colors.white : color, size: 24),
+                              child: Icon(catIcon(cat.id),
+                                  color: isSelected ? Colors.white : color,
+                                  size: 24),
                             ),
                             const SizedBox(width: 14),
 
@@ -1322,15 +1600,24 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 15,
-                                          color: isSelected ? color : const Color(0xFF0F172A),
+                                          color:
+                                              isSelected ? color : _textColor,
                                         ),
                                       ),
                                       if (isSelected) ...[
                                         const SizedBox(width: 8),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
-                                          child: const Text('ĐANG HIỂN THỊ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                              color: color,
+                                              borderRadius:
+                                                  BorderRadius.circular(6)),
+                                          child: const Text('ĐANG HIỂN THỊ',
+                                              style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white)),
                                         ),
                                       ],
                                     ],
@@ -1338,13 +1625,19 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                   const SizedBox(height: 3),
                                   Text(
                                     cat.source,
-                                    style: TextStyle(fontSize: 12, color: isSelected ? color.withOpacity(0.8) : const Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: isSelected
+                                            ? color.withOpacity(0.8)
+                                            : _subTextColor,
+                                        fontWeight: FontWeight.w500),
                                   ),
                                   Text(
                                     cat.rssUrl,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)),
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Color(0xFFCBD5E1)),
                                   ),
                                 ],
                               ),
@@ -1354,22 +1647,28 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             const SizedBox(width: 10),
                             isSelected
                                 ? Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: color,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+                                    child: const Icon(Icons.check_rounded,
+                                        color: Colors.white, size: 18),
                                   )
                                 : Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: color.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
                                       'Chuyển',
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: color),
                                     ),
                                   ),
                           ],
@@ -1398,28 +1697,36 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Tài khoản đang đăng nhập trong phiên',
-                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.bold,
+                    color: _textColor),
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
                   CircleAvatar(
                     radius: 26,
-                    backgroundColor: isLoggedIn ? const Color(0xFF1E60F2) : const Color(0xFF94A3B8),
+                    backgroundColor: isLoggedIn
+                        ? const Color(0xFF1E60F2)
+                        : const Color(0xFF94A3B8),
                     child: Text(
                       isLoggedIn && auth.displayName.isNotEmpty
                           ? auth.displayName[0].toUpperCase()
                           : 'K',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -1429,33 +1736,43 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       children: [
                         Text(
                           isLoggedIn ? auth.displayName : 'Khách vãng lai',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: _textColor),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           isLoggedIn ? auth.email : 'Chưa đăng nhập tài khoản',
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                          style: TextStyle(fontSize: 13, color: _subTextColor),
                         ),
                         if (user != null) ...[
                           const SizedBox(height: 4),
                           Text(
                             'UID: ${user.uid}',
-                            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontFamily: 'monospace'),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF94A3B8),
+                                fontFamily: 'monospace'),
                           ),
                         ] else if (isLoggedIn) ...[
                           const SizedBox(height: 4),
                           Text(
                             'UID: ${auth.uid}',
-                            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontFamily: 'monospace'),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF94A3B8),
+                                fontFamily: 'monospace'),
                           ),
                         ],
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isLoggedIn ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                      color: isLoggedIn ? const Color(0xFFECFDF5) : _chipColor,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -1463,7 +1780,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isLoggedIn ? const Color(0xFF059669) : const Color(0xFF64748B),
+                        color: isLoggedIn
+                            ? const Color(0xFF059669)
+                            : _subTextColor,
                       ),
                     ),
                   ),
@@ -1478,27 +1797,32 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: _inputFillColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: Color(0xFF1E60F2), size: 20),
+                  Icon(Icons.info_outline_rounded,
+                      color: Color(0xFF1E60F2), size: 20),
                   SizedBox(width: 8),
                   Text(
                     'Quản lý người dùng Firebase Auth',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: _textColor),
                   ),
                 ],
               ),
               SizedBox(height: 8),
               Text(
                 'Hệ thống đang tích hợp xác thực trực tiếp qua Firebase Authentication. Toàn bộ người dùng đăng ký qua Email hoặc Google Sign-In được lưu trữ an toàn trên Google Cloud Console.',
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+                style: TextStyle(
+                    fontSize: 12.5, color: _subTextColor, height: 1.4),
               ),
             ],
           ),
@@ -1517,65 +1841,76 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: const [
-                  Icon(Icons.campaign_rounded, color: Color(0xFF1654F0), size: 26),
+                children: [
+                  Icon(Icons.campaign_rounded,
+                      color: Color(0xFF1654F0), size: 26),
                   SizedBox(width: 8),
                   Text(
                     'Phát sóng thông báo ứng dụng',
-                    style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                    style: TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        color: _textColor),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Gửi thông báo đẩy đến phiên người dùng hiện tại',
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                style: TextStyle(fontSize: 12.5, color: _subTextColor),
               ),
               const SizedBox(height: 18),
 
-              const Text('Chủ đề thông báo *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const Text('Chủ đề thông báo *',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: ['Tin nóng', 'Thời tiết', 'Hệ thống', 'Khuyến mãi'].map((type) {
+                children: ['Tin nóng', 'Thời tiết', 'Hệ thống', 'Khuyến mãi']
+                    .map((type) {
                   final isSel = _selectedNotifType == type;
                   return ChoiceChip(
                     label: Text(type),
                     selected: isSel,
                     selectedColor: const Color(0xFF1654F0),
                     labelStyle: TextStyle(
-                      color: isSel ? Colors.white : const Color(0xFF334155),
+                      color: isSel ? Colors.white : _subTextColor,
                       fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
                       fontSize: 12.5,
                     ),
-                    onSelected: (_) => setState(() => _selectedNotifType = type),
+                    onSelected: (_) =>
+                        setState(() => _selectedNotifType = type),
                   );
                 }).toList(),
               ),
               const SizedBox(height: 14),
 
-              const Text('Tiêu đề *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const Text('Tiêu đề *',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
                 controller: _notifTitleController,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Ví dụ: Cập nhật tin bão mới nhất hôm nay...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
               const SizedBox(height: 14),
 
-              const Text('Nội dung chi tiết *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const Text('Nội dung chi tiết *',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
                 controller: _notifBodyController,
@@ -1583,22 +1918,26 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Nội dung thông báo gửi đến người dùng...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   contentPadding: const EdgeInsets.all(12),
                 ),
               ),
               const SizedBox(height: 18),
 
               // Xem trước Live Preview
-              const Text(
+              Text(
                 'Xem trước thông báo (Live Preview):',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: _subTextColor),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: _inputFillColor,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
@@ -1616,7 +1955,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           width: 38,
                           height: 38,
                           color: const Color(0xFF1E60F2),
-                          child: const Icon(Icons.public, color: Colors.white, size: 22),
+                          child: const Icon(Icons.public,
+                              color: Colors.white, size: 22),
                         ),
                       ),
                     ),
@@ -1630,9 +1970,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             children: [
                               Text(
                                 'DAILY NEWS • $_selectedNotifType',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1E60F2)),
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1E60F2)),
                               ),
-                              const Text('Vừa xong', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                              const Text('Vừa xong',
+                                  style: TextStyle(
+                                      fontSize: 10, color: Colors.grey)),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -1640,7 +1985,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             _notifTitleController.text.trim().isNotEmpty
                                 ? _notifTitleController.text.trim()
                                 : 'Tiêu đề thông báo...',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _textColor),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -1649,7 +1997,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 : 'Nội dung thông báo...',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                            style:
+                                TextStyle(fontSize: 12, color: _subTextColor),
                           ),
                         ],
                       ),
@@ -1664,9 +2013,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 height: 50,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    if (_notifTitleController.text.trim().isEmpty || _notifBodyController.text.trim().isEmpty) {
+                    if (_notifTitleController.text.trim().isEmpty ||
+                        _notifBodyController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Vui lòng nhập đầy đủ tiêu đề và nội dung thông báo!'), backgroundColor: Colors.red),
+                        const SnackBar(
+                            content: Text(
+                                'Vui lòng nhập đầy đủ tiêu đề và nội dung thông báo!'),
+                            backgroundColor: Colors.red),
                       );
                       return;
                     }
@@ -1677,21 +2030,30 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         'title': _notifTitleController.text.trim(),
                         'body': _notifBodyController.text.trim(),
                         'type': _selectedNotifType,
-                        'sentTime': '${now.hour}:${now.minute < 10 ? '0' : ''}${now.minute}',
+                        'sentTime':
+                            '${now.hour}:${now.minute < 10 ? '0' : ''}${now.minute}',
                       });
                       _notifTitleController.clear();
                       _notifBodyController.clear();
                     });
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã phát sóng thông báo thành công!'), backgroundColor: Colors.green),
+                      const SnackBar(
+                          content: Text('Đã phát sóng thông báo thành công!'),
+                          backgroundColor: Colors.green),
                     );
                   },
-                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 19),
-                  label: const Text('Phát sóng thông báo ngay', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                  icon: const Icon(Icons.send_rounded,
+                      color: Colors.white, size: 19),
+                  label: const Text('Phát sóng thông báo ngay',
+                      style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1654F0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
               ),
@@ -1699,33 +2061,42 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
         ),
         const SizedBox(height: 20),
-
         if (_broadcastNotifications.isNotEmpty) ...[
-          const Text('Thông báo đã phát sóng trong phiên:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          Text('Thông báo đã phát sóng trong phiên:',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: _textColor)),
           const SizedBox(height: 10),
           ..._broadcastNotifications.map((n) {
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _surfaceColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: _borderColor),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.mark_email_read_rounded, color: Color(0xFF10B981), size: 20),
+                  const Icon(Icons.mark_email_read_rounded,
+                      color: Color(0xFF10B981), size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(n['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        Text(n['body'] as String, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        Text(n['title'] as String,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(n['body'] as String,
+                            style:
+                                TextStyle(fontSize: 12, color: _subTextColor)),
                       ],
                     ),
                   ),
-                  Text(n['sentTime'] as String, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(n['sentTime'] as String,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
             );
@@ -1743,13 +2114,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final total = articles.length;
 
     // Đếm số bài thực tế theo nguồn báo
-    final vnExpressCount = articles.where((a) => a.source.toLowerCase().contains('vnexpress')).length;
-    final tuoiTreCount = articles.where((a) => a.source.toLowerCase().contains('tuổi trẻ') || a.source.toLowerCase().contains('tuoitre')).length;
-    final thanhNienCount = articles.where((a) => a.source.toLowerCase().contains('thanh niên') || a.source.toLowerCase().contains('thanhnien')).length;
+    final vnExpressCount = articles
+        .where((a) => a.source.toLowerCase().contains('vnexpress'))
+        .length;
+    final tuoiTreCount = articles
+        .where((a) =>
+            a.source.toLowerCase().contains('tuổi trẻ') ||
+            a.source.toLowerCase().contains('tuoitre'))
+        .length;
+    final thanhNienCount = articles
+        .where((a) =>
+            a.source.toLowerCase().contains('thanh niên') ||
+            a.source.toLowerCase().contains('thanhnien'))
+        .length;
     final adminCount = total - vnExpressCount - tuoiTreCount - thanhNienCount;
 
     // Tính tỷ lệ % bài có hình ảnh
-    final hasImageCount = articles.where((a) => a.imageUrl != null && a.imageUrl!.isNotEmpty).length;
+    final hasImageCount = articles
+        .where((a) => a.imageUrl != null && a.imageUrl!.isNotEmpty)
+        .length;
     final imageRatio = total > 0 ? (hasImageCount / total) : 0.0;
 
     return ListView(
@@ -1759,9 +2142,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1769,24 +2152,34 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Phân bổ nguồn báo thực tế',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _textColor),
                   ),
-                  Text('Tổng $total bài', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E60F2))),
+                  Text('Tổng $total bài',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E60F2))),
                 ],
               ),
               const SizedBox(height: 16),
-
               if (total > 0) ...[
-                _buildRealProgressRow('VnExpress RSS', vnExpressCount, total, const Color(0xFF991B1B)),
+                _buildRealProgressRow('VnExpress RSS', vnExpressCount, total,
+                    const Color(0xFF991B1B)),
                 const SizedBox(height: 12),
-                _buildRealProgressRow('Tuổi Trẻ Online', tuoiTreCount, total, const Color(0xFF0284C7)),
+                _buildRealProgressRow('Tuổi Trẻ Online', tuoiTreCount, total,
+                    const Color(0xFF0284C7)),
                 const SizedBox(height: 12),
-                _buildRealProgressRow('Báo Thanh Niên', thanhNienCount, total, const Color(0xFF16A34A)),
+                _buildRealProgressRow('Báo Thanh Niên', thanhNienCount, total,
+                    const Color(0xFF16A34A)),
                 if (adminCount > 0) ...[
                   const SizedBox(height: 12),
-                  _buildRealProgressRow('Biên tập Admin', adminCount, total, const Color(0xFF8B5CF6)),
+                  _buildRealProgressRow('Biên tập Admin', adminCount, total,
+                      const Color(0xFF8B5CF6)),
                 ],
               ] else
                 const Center(
@@ -1804,16 +2197,19 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Chỉ số nội dung & Tương tác thực tế',
-                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.bold,
+                    color: _textColor),
               ),
               const SizedBox(height: 14),
               Row(
@@ -1832,7 +2228,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     child: _buildRealStatBox(
                       title: 'Đã lưu yêu thích',
                       value: '${fav.favorites.length} bài',
-                      percent: total > 0 ? '${((fav.favorites.length / total) * 100).toStringAsFixed(1)}%' : '0%',
+                      percent: total > 0
+                          ? '${((fav.favorites.length / total) * 100).toStringAsFixed(1)}%'
+                          : '0%',
                       icon: Icons.favorite_rounded,
                       color: const Color(0xFFEF4444),
                     ),
@@ -1856,8 +2254,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('$name ($count bài)', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            Text('$percent%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+            Text('$name ($count bài)',
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            Text('$percent%',
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w800, color: color)),
           ],
         ),
         const SizedBox(height: 6),
@@ -1866,7 +2268,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           child: LinearProgressIndicator(
             value: ratio,
             minHeight: 8,
-            backgroundColor: const Color(0xFFF1F5F9),
+            backgroundColor: _bgColor,
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
@@ -1884,9 +2286,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: _inputFillColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1894,14 +2296,24 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _subTextColor)),
               Icon(icon, color: color, size: 20),
             ],
           ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: _textColor)),
           const SizedBox(height: 2),
-          Text('Tỷ lệ: $percent', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          Text('Tỷ lệ: $percent',
+              style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: color)),
         ],
       ),
     );
@@ -1918,7 +2330,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: bgGradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: LinearGradient(
+            colors: bgGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
@@ -1928,18 +2343,32 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
               Container(
                 padding: const EdgeInsets.all(5),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                    color: Colors.white, shape: BoxShape.circle),
                 child: Icon(icon, color: color, size: 16),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color, letterSpacing: -0.5)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                  letterSpacing: -0.5)),
           const SizedBox(height: 4),
-          Text(subText, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color.withOpacity(0.85))),
+          Text(subText,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color.withOpacity(0.85))),
         ],
       ),
     );
@@ -1966,7 +2395,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           children: [
             Icon(icon, size: 17, color: color),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
           ],
         ),
       ),

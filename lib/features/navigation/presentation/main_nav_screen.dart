@@ -1,5 +1,6 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import '../../favorites/presentation/favorites_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../news/presentation/news_list_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
@@ -18,62 +19,101 @@ class _MainNavScreenState extends State<MainNavScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    const appMaxWidth = 560.0;
 
     final List<Widget> screens = [
       HomeScreen(
         onNavigateToNews: () => setState(() => _currentIndex = 1),
         onNavigateToWeather: () => setState(() => _currentIndex = 2),
-        onNavigateToFavorites: () => setState(() => _currentIndex = 3),
       ),
       const NewsListScreen(),
       const WeatherScreen(),
-      const FavoritesScreen(),
       const ProfileScreen(),
     ];
 
+    final navigationBar = SafeArea(
+      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      child: Center(
+        heightFactor: 1.0,
+        child: SizedBox(
+          width: math.min(
+            MediaQuery.sizeOf(context).width - 24,
+            appMaxWidth,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: cs.surface.withOpacity(0.94),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: cs.outlineVariant.withOpacity(0.7)),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withOpacity(0.13),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(26),
+              child: NavigationBar(
+                height: 68,
+                selectedIndex: _currentIndex,
+                onDestinationSelected: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                backgroundColor: Colors.transparent,
+                indicatorColor: cs.primaryContainer,
+                elevation: 0,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded, color: cs.primary),
+                    label: 'Trang chủ',
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.article_outlined),
+                    selectedIcon:
+                        Icon(Icons.article_rounded, color: cs.primary),
+                    label: 'Tin tức',
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.cloud_outlined),
+                    selectedIcon: Icon(Icons.cloud_rounded, color: cs.primary),
+                    label: 'Thời tiết',
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.person_outline_rounded),
+                    selectedIcon:
+                        Icon(Icons.person_rounded, color: cs.primary),
+                    label: 'Tài khoản',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
+      backgroundColor: cs.surfaceContainerLowest,
+      body: ColoredBox(
+        color: cs.surfaceContainerLowest,
+        child: Center(
+          child: SizedBox(
+            width: math.min(MediaQuery.sizeOf(context).width, appMaxWidth),
+            height: double.infinity,
+            child: IndexedStack(
+              index: _currentIndex,
+              children: screens,
+            ),
+          ),
+        ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        backgroundColor: cs.surface,
-        indicatorColor: cs.primaryContainer,
-        elevation: 1,
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded, color: cs.primary),
-            label: 'Trang chủ',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.article_outlined),
-            selectedIcon: Icon(Icons.article_rounded, color: cs.primary),
-            label: 'Tin tức',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.cloud_outlined),
-            selectedIcon: Icon(Icons.cloud_rounded, color: cs.primary),
-            label: 'Thời tiết',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.favorite_outline_rounded),
-            selectedIcon: Icon(Icons.favorite_rounded, color: cs.primary),
-            label: 'Yêu thích',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded, color: cs.primary),
-            label: 'Cá nhân',
-          ),
-        ],
-      ),
+      bottomNavigationBar: navigationBar,
     );
   }
 }

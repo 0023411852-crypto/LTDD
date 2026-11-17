@@ -13,7 +13,20 @@
           "package_name": "com.example.daily_news_weather_portal"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "650149107566-aps7jm323s51v3lr4toapc74p47qfh8o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.daily_news_weather_portal",
+            "certificate_hash": "4f01790b4e2909d227f108ffacaad1c40c578b55"
+          }
+        },
+        {
+          "client_id": "650149107566-c5akbcup5a6e0mbr808r9v9m7457k7ha.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDWj_W4FV8MDor4Gx9kpIhZQezxjxgEnjQ"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "650149107566-c5akbcup5a6e0mbr808r9v9m7457k7ha.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

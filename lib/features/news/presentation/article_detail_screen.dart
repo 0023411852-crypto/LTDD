@@ -14,7 +14,7 @@ class ArticleDetailScreen extends StatefulWidget {
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _showFullWebView = false;
-  late final WebViewController _webController;
+  WebViewController? _webController;
   bool _webLoading = true;
   bool _isPlayingAudio = false;
 
@@ -29,6 +29,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         },
       ))
       ..loadRequest(Uri.parse(widget.article.link));
+  }
+
+  Future<void> _openOriginalArticle() async {
+    setState(() => _showFullWebView = true);
   }
 
   String _getTimeAgo(DateTime? date) {
@@ -98,10 +102,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: _showFullWebView
+      body: _showFullWebView && _webController != null
           ? Stack(
               children: [
-                WebViewWidget(controller: _webController),
+                WebViewWidget(controller: _webController!),
                 if (_webLoading) const LinearProgressIndicator(),
               ],
             )
@@ -150,7 +154,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          widget.article.source,
+                          'Nguồn: ${widget.article.source}',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -164,6 +168,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      Chip(
+                        label: Text(widget.article.category),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      ...widget.article.tags.map(
+                        (tag) => Chip(
+                          label: Text('#$tag'),
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                     ],
@@ -210,6 +232,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       color: cs.onSurface,
                     ),
                   ),
+                  if (widget.article.inlineImageUrls.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    ...widget.article.inlineImageUrls.map(
+                      (imageUrl) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.network(
+                            imageUrl,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 28),
 
                   // 6. Nút Đọc bài gốc (WebView)
@@ -217,8 +257,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton.tonalIcon(
-                      onPressed: () =>
-                          setState(() => _showFullWebView = true),
+                      onPressed: _openOriginalArticle,
                       icon: const Icon(Icons.open_in_browser_rounded),
                       label: const Text('Đọc bài viết gốc tại trang báo'),
                     ),
@@ -253,17 +292,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   IconButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Đã sao chép liên kết!')),
+                        const SnackBar(content: Text('Đã sao chép liên kết!')),
                       );
                     },
-                    icon: Icon(Icons.share_outlined,
-                        color: cs.onSurfaceVariant),
+                    icon:
+                        Icon(Icons.share_outlined, color: cs.onSurfaceVariant),
                     tooltip: 'Chia sẻ',
                   ),
                   IconButton(
-                    onPressed: () =>
-                        setState(() => _showFullWebView = true),
+                    onPressed: _openOriginalArticle,
                     icon: Icon(Icons.public, color: cs.primary),
                     tooltip: 'Đọc web',
                   ),

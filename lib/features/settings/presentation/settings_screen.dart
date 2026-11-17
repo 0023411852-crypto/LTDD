@@ -316,7 +316,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   iconBg: const Color(0xFF1E60F2).withOpacity(0.14),
                   iconColor: const Color(0xFF1E60F2),
                   title: 'Phiên bản ứng dụng',
-                  subtitle: 'Daily News & Weather Portal v1.0.0',
+                  subtitle: 'Tin tức & Thời tiết v1.0.0',
                   textColor: textColor,
                   subTextColor: subTextColor,
                   onTap: () {},
@@ -587,7 +587,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
         content: Text(
-          'Ứng dụng Daily News & Weather Portal cam kết bảo mật tối đa dữ liệu của người dùng, tôn trọng quyền riêng tư và chỉ lưu trữ các thông tin thiết yếu phục vụ cho việc cá nhân hóa trải nghiệm đọc tin và dự báo thời tiết.',
+          'Ứng dụng Tin tức & Thời tiết cam kết bảo mật tối đa dữ liệu của người dùng, tôn trọng quyền riêng tư và chỉ lưu trữ các thông tin thiết yếu phục vụ cho việc cá nhân hóa trải nghiệm đọc tin và dự báo thời tiết.',
           style: TextStyle(fontSize: 14, color: textColor.withOpacity(0.85), height: 1.5),
         ),
         actions: [

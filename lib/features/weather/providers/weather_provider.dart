@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../models/weather.dart';
 import '../../../services/weather_service.dart';
 
@@ -11,15 +13,26 @@ class WeatherProvider extends ChangeNotifier {
   String _errorMessage = '';
   City _selectedCity = WeatherService.cities.first;
   Weather? _weather;
+  bool _isUsingCurrentLocation = false;
 
   WeatherStatus get status => _status;
   String get errorMessage => _errorMessage;
   City get selectedCity => _selectedCity;
   Weather? get weather => _weather;
-  List<City> get cities => WeatherService.cities;
+  bool get isUsingCurrentLocation => _isUsingCurrentLocation;
+  List<City> get cities => [
+        ...WeatherService.cities,
+        if (!WeatherService.cities
+            .any((city) => city.name == _selectedCity.name))
+          _selectedCity,
+      ];
+
+  Future<List<City>> searchCities(String query) {
+    return _service.searchCities(query);
+  }
 
   WeatherProvider() {
-    fetchWeather();
+    _loadInitialWeather();
   }
 
   Future<void> selectCity(City city) async {
@@ -27,7 +40,60 @@ class WeatherProvider extends ChangeNotifier {
       return;
     }
     _selectedCity = city;
+    _isUsingCurrentLocation = city.name == 'Vị trí của bạn';
+    _weather = null;
     await fetchWeather();
+  }
+
+  Future<void> useCurrentLocation() async {
+    _status = WeatherStatus.loading;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      _selectedCity = await _service.getCurrentLocation();
+      _isUsingCurrentLocation = true;
+      final data = await _service.fetchWeather(_selectedCity);
+      _weather = data;
+      _status = WeatherStatus.success;
+    } on LocationServiceDisabledException {
+      _setLocationError('Vui lòng bật dịch vụ định vị trên thiết bị.');
+    } on PermissionDeniedException {
+      _setLocationError(
+        'Bạn chưa cấp quyền vị trí. Có thể chọn thành phố thủ công.',
+      );
+    } on TimeoutException {
+      _setLocationError(
+          'Không lấy được vị trí hiện tại trong thời gian cho phép.');
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _status = WeatherStatus.error;
+    }
+    notifyListeners();
+  }
+
+  Future<void> _loadInitialWeather() async {
+    try {
+      _selectedCity = await _service.getCurrentLocation();
+      _isUsingCurrentLocation = true;
+      final data = await _service.fetchWeather(_selectedCity);
+      _weather = data;
+      _status = WeatherStatus.success;
+    } on LocationServiceDisabledException {
+      await fetchWeather();
+    } on PermissionDeniedException {
+      await fetchWeather();
+    } on TimeoutException {
+      await fetchWeather();
+    } catch (_) {
+      await fetchWeather();
+    }
+    notifyListeners();
+  }
+
+  void _setLocationError(String message) {
+    _errorMessage = message;
+    _status = WeatherStatus.error;
   }
 
   Future<void> fetchWeather() async {

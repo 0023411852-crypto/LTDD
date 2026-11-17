@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Daily News Weather Portal</string>
+	<string>Tin tức &amp; Thời tiết</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>daily_news_weather_portal</string>
+	<string>Tin tức &amp; Thời tiết</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -24,6 +24,8 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần vị trí của bạn để hiển thị dự báo thời tiết tại nơi bạn đang ở.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

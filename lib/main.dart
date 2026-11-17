@@ -7,6 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/favorites/providers/favorites_provider.dart';
 import 'features/navigation/presentation/splash_screen.dart';
+import 'features/notifications/providers/notifications_provider.dart';
 import 'features/news/providers/news_provider.dart';
 import 'features/settings/providers/theme_provider.dart';
 import 'features/weather/providers/weather_provider.dart';
@@ -26,6 +27,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => NewsProvider()),
         ChangeNotifierProvider(create: (_) => WeatherProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationsProvider()),
       ],
       child: const DailyNewsApp(),
     ),
@@ -40,7 +42,7 @@ class DailyNewsApp extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
-      title: 'Daily News & Weather Portal',
+      title: 'Tin tức & Thời tiết',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

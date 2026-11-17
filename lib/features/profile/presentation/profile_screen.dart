@@ -5,6 +5,7 @@ import '../../auth/presentation/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../favorites/presentation/favorites_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
+import 'personal_info_screen.dart';
 import '../../search/presentation/search_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 
@@ -19,20 +20,8 @@ class ProfileScreen extends StatelessWidget {
     final displayName = isLoggedIn ? auth.displayName : 'Khách';
     final email = isLoggedIn ? auth.email : 'Chưa đăng nhập tài khoản';
 
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Hồ sơ cá nhân',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-          ),
-        ),
-      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
@@ -40,35 +29,33 @@ class ProfileScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              border: Border.all(color: cs.outlineVariant),
             ),
             child: Column(
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: const Color(0xFF1E60F2).withOpacity(0.12),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    size: 46,
-                    color: Color(0xFF1E60F2),
-                  ),
+                  backgroundColor: cs.primary.withOpacity(0.12),
+                  backgroundImage: auth.photoUrl.isNotEmpty
+                      ? NetworkImage(auth.photoUrl)
+                      : null,
+                  child: auth.photoUrl.isEmpty
+                      ? Icon(
+                          Icons.person_rounded,
+                          size: 46,
+                          color: cs.primary,
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   displayName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -76,7 +63,7 @@ class ProfileScreen extends StatelessWidget {
                   email,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
                 if (!isLoggedIn) ...[
@@ -94,7 +81,7 @@ class ProfileScreen extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E60F2),
+                        backgroundColor: cs.primary,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -119,23 +106,28 @@ class ProfileScreen extends StatelessWidget {
           // Menu List chuẩn Mockup
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: cs.outlineVariant),
             ),
             child: Column(
               children: [
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.person_outline_rounded,
                   title: 'Thông tin cá nhân',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tính năng chỉnh sửa hồ sơ')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PersonalInfoScreen(),
+                      ),
                     );
                   },
                 ),
                 _buildDivider(),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.bookmark_border_rounded,
                   title: 'Tin đã lưu',
                   onTap: () {
@@ -149,6 +141,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.history_rounded,
                   title: 'Lịch sử tìm kiếm',
                   onTap: () {
@@ -162,6 +155,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.settings_outlined,
                   title: 'Cài đặt',
                   onTap: () {
@@ -175,6 +169,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.notifications_none_rounded,
                   title: 'Thông báo',
                   onTap: () {
@@ -189,6 +184,7 @@ class ProfileScreen extends StatelessWidget {
                 _buildDivider(),
                 if (auth.isAdmin) ...[
                   _buildMenuItem(
+                    context: context,
                     icon: Icons.admin_panel_settings_outlined,
                     title: 'Bảng quản trị viên (Admin Panel)',
                     iconColor: const Color(0xFF0D9488),
@@ -204,6 +200,7 @@ class ProfileScreen extends StatelessWidget {
                   _buildDivider(),
                 ],
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.help_outline_rounded,
                   title: 'Trợ giúp & hỗ trợ',
                   onTap: () {
@@ -216,6 +213,7 @@ class ProfileScreen extends StatelessWidget {
                 _buildDivider(),
                 if (isLoggedIn)
                   _buildMenuItem(
+                    context: context,
                     icon: Icons.logout_rounded,
                     title: 'Đăng xuất',
                     iconColor: const Color(0xFFEF4444),
@@ -269,6 +267,7 @@ class ProfileScreen extends StatelessWidget {
                   )
                 else
                   _buildMenuItem(
+                    context: context,
                     icon: Icons.login_rounded,
                     title: 'Đăng nhập / Đăng ký',
                     iconColor: const Color(0xFF1E60F2),
@@ -292,33 +291,169 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _showPersonalInfo(
+    BuildContext context,
+    AuthProvider auth,
+  ) async {
+    if (!auth.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Vui lòng đăng nhập để xem thông tin cá nhân.')),
+      );
+      return;
+    }
+
+    final nameController = TextEditingController(text: auth.displayName);
+    final formKey = GlobalKey<FormState>();
+    var saving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'Thông tin cá nhân',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      child: Icon(
+                        Icons.person_rounded,
+                        size: 34,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: nameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Tên hiển thị',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Vui lòng nhập tên hiển thị';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      initialValue: auth.email,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Mã tài khoản: ${auth.uid}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setState(() => saving = true);
+                          final success = await auth.updateDisplayName(
+                            nameController.text,
+                          );
+                          if (!context.mounted) return;
+                          if (success) {
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã cập nhật thông tin cá nhân.'),
+                              ),
+                            );
+                          } else {
+                            setState(() => saving = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  auth.errorMessage.isNotEmpty
+                                      ? auth.errorMessage
+                                      : 'Không thể cập nhật thông tin.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Lưu thay đổi'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    nameController.dispose();
+  }
+
   Widget _buildMenuItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
     Color iconColor = const Color(0xFF1E60F2),
-    Color textColor = const Color(0xFF0F172A),
+    Color? textColor,
     bool showArrow = true,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: iconColor, size: 22),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w600,
-          color: textColor,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        leading: Icon(icon, color: iconColor, size: 22),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: textColor ?? Theme.of(context).colorScheme.onSurface,
+          ),
         ),
+        trailing: showArrow
+            ? const Icon(Icons.chevron_right_rounded,
+                color: Colors.grey, size: 20)
+            : null,
+        onTap: onTap,
       ),
-      trailing: showArrow
-          ? const Icon(Icons.chevron_right_rounded,
-              color: Colors.grey, size: 20)
-          : null,
-      onTap: onTap,
     );
   }
 
   Widget _buildDivider() {
-    return const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9));
+    return const Divider(height: 1, thickness: 1);
   }
 }

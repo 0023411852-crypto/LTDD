@@ -60,11 +60,13 @@ class NewsService {
             description: item.getElement('description')?.innerText ?? '',
             source: category.source,
             publishedAt: pub,
+            category: category.label,
           );
         })
         .where((a) => a.title.isNotEmpty && a.link.isNotEmpty)
         .toList();
   }
+
 }
 
 /// Parser cho pubDate dạng RFC822 của RSS, ví dụ: Sat, 14 Nov 2026 07:30:00 +0700

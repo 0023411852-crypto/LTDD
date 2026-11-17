@@ -126,7 +126,32 @@ class _SearchScreenState extends State<SearchScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // 1. Xu hướng tìm kiếm
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [cs.primary, cs.primary.withOpacity(0.78)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.explore_rounded,
+                          color: Colors.white, size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Khám phá tin tức theo chủ đề bạn quan tâm',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
                 Text(
                   'Từ khóa phổ biến',
                   style: tt.titleSmall?.copyWith(
@@ -180,15 +205,25 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                   const SizedBox(height: 8),
                   ..._history.map((term) {
-                    return ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.history_rounded,
-                          color: cs.onSurfaceVariant, size: 20),
-                      title: Text(term, style: const TextStyle(fontSize: 14)),
-                      trailing: Icon(Icons.north_west_rounded,
-                          size: 16, color: cs.outline),
-                      onTap: () => _performSearch(term),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: ListTile(
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        tileColor: cs.surface,
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                        leading: Icon(Icons.history_rounded,
+                            color: cs.primary, size: 20),
+                        title: Text(term,
+                            style:
+                                TextStyle(fontSize: 14, color: cs.onSurface)),
+                        trailing: Icon(Icons.north_west_rounded,
+                            size: 16, color: cs.outline),
+                        onTap: () => _performSearch(term),
+                      ),
                     );
                   }),
                 ],
@@ -228,8 +263,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: _searchResults.length,
-      separatorBuilder: (_, __) =>
-          Divider(height: 1, color: cs.outlineVariant),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final article = _searchResults[index];
         return InkWell(
@@ -241,8 +275,13 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: cs.outlineVariant),
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

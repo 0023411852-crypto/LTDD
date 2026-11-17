@@ -1,9 +1,19 @@
 {
   "rules": {
+    "articles": {
+      ".read": true,
+      "$articleId": {
+        ".write": "auth != null"
+      }
+    },
     "users": {
       "$uid": {
         ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".write": "$uid === auth.uid",
+        "notifications": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
+        }
       }
     }
   }

@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
-        android:label="daily_news_weather_portal"
+        android:label="Tin tức &amp; Thời tiết"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
