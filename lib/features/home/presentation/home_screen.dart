@@ -204,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     .withOpacity(0.35),
               ),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(color: Colors.transparent),
               ),
             ),
@@ -825,6 +825,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (article.imageUrl != null)
                           Image.network(
                             article.imageUrl!,
+                            cacheWidth: 800,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
                                 _buildImagePlaceholder(article.source),
@@ -892,28 +893,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         // Nút yêu thích góc trên bên phải
                         Positioned(
-                          top: 12,
-                          right: 12,
+                          top: 10,
+                          right: 10,
                           child: InkWell(
                             onTap: () => favoritesProvider.toggleFavorite(article),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(22),
                             child: Container(
-                              padding: const EdgeInsets.all(7),
+                              width: 40,
+                              height: 40,
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.4),
+                                color: Colors.black.withOpacity(0.45),
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withOpacity(0.35),
                                 ),
                               ),
-                              child: Icon(
-                                isFav
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                color: isFav
-                                    ? const Color(0xFFEF4444)
-                                    : Colors.white,
-                                size: 18,
+                              child: Center(
+                                child: Icon(
+                                  isFav
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  color: isFav
+                                      ? const Color(0xFFEF4444)
+                                      : Colors.white,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ),
@@ -1131,6 +1135,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: article.imageUrl != null
                     ? Image.network(
                         article.imageUrl!,
+                        cacheWidth: 330,
+                        cacheHeight: 252,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) =>
                             _buildImagePlaceholder(article.source),
@@ -1181,17 +1187,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Nút yêu thích
                       InkWell(
                         onTap: () => favoritesProvider.toggleFavorite(article),
-                        borderRadius: BorderRadius.circular(14),
-                        child: Padding(
-                          padding: const EdgeInsets.all(2),
-                          child: Icon(
-                            isFav
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            color: isFav
-                                ? const Color(0xFFEF4444)
-                                : subTextColor.withOpacity(0.7),
-                            size: 18,
+                        borderRadius: BorderRadius.circular(20),
+                        child: SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: Center(
+                            child: Icon(
+                              isFav
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: isFav
+                                  ? const Color(0xFFEF4444)
+                                  : subTextColor.withOpacity(0.7),
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
@@ -1269,6 +1278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: article.imageUrl != null
                     ? Image.network(
                         article.imageUrl!,
+                        cacheWidth: 800,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) =>
                             _buildImagePlaceholder(article.source),
@@ -1314,14 +1324,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       InkWell(
                         onTap: () => favoritesProvider.toggleFavorite(article),
-                        child: Icon(
-                          isFav
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          color: isFav
-                              ? const Color(0xFFEF4444)
-                              : subTextColor.withOpacity(0.7),
-                          size: 20,
+                        borderRadius: BorderRadius.circular(18),
+                        child: SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: Center(
+                            child: Icon(
+                              isFav
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: isFav
+                                  ? const Color(0xFFEF4444)
+                                  : subTextColor.withOpacity(0.7),
+                              size: 20,
+                            ),
+                          ),
                         ),
                       ),
                     ],

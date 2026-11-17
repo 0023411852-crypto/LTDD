@@ -41,6 +41,9 @@ class ProfileScreen extends StatelessWidget {
                   backgroundImage: auth.photoUrl.isNotEmpty
                       ? NetworkImage(auth.photoUrl)
                       : null,
+                  onBackgroundImageError: auth.photoUrl.isNotEmpty
+                      ? (_, __) {}
+                      : null,
                   child: auth.photoUrl.isEmpty
                       ? Icon(
                           Icons.person_rounded,

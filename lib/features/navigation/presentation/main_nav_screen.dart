@@ -15,13 +15,12 @@ class MainNavScreen extends StatefulWidget {
 
 class _MainNavScreenState extends State<MainNavScreen> {
   int _currentIndex = 0;
+  late final List<Widget> _screens;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    const appMaxWidth = 560.0;
-
-    final List<Widget> screens = [
+  void initState() {
+    super.initState();
+    _screens = [
       HomeScreen(
         onNavigateToNews: () => setState(() => _currentIndex = 1),
         onNavigateToWeather: () => setState(() => _currentIndex = 2),
@@ -30,6 +29,12 @@ class _MainNavScreenState extends State<MainNavScreen> {
       const WeatherScreen(),
       const ProfileScreen(),
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const appMaxWidth = 560.0;
 
     final navigationBar = SafeArea(
       minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
@@ -108,7 +113,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
             height: double.infinity,
             child: IndexedStack(
               index: _currentIndex,
-              children: screens,
+              children: _screens,
             ),
           ),
         ),

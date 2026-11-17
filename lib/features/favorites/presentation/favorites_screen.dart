@@ -282,6 +282,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     child: article.imageUrl != null
                         ? Image.network(
                             article.imageUrl!,
+                            cacheWidth: 330,
+                            cacheHeight: 252,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
                                 _buildImagePlaceholder(article.source),
@@ -318,13 +320,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           InkWell(
                             onTap: () =>
                                 favoritesProvider.toggleFavorite(article),
-                            borderRadius: BorderRadius.circular(14),
-                            child: const Padding(
-                              padding: EdgeInsets.all(3),
-                              child: Icon(
-                                Icons.favorite_rounded,
-                                color: Color(0xFFEF4444),
-                                size: 19,
+                            borderRadius: BorderRadius.circular(18),
+                            child: const SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Center(
+                                child: Icon(
+                                  Icons.favorite_rounded,
+                                  color: Color(0xFFEF4444),
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ),
