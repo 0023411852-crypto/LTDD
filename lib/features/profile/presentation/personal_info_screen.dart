@@ -90,6 +90,105 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     }
   }
 
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    if (auth.isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tài khoản quản trị viên hệ sinh thái không thể bị xóa.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Xóa tài khoản vĩnh viễn?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Hành động này sẽ xóa vĩnh viễn tài khoản của bạn và không thể khôi phục.',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            SizedBox(height: 10),
+            Text(
+              '• Toàn bộ thông tin cá nhân (Tên, Số điện thoại, Avatar) sẽ bị xóa.\n'
+              '• Các bài viết yêu thích và lịch sử đọc tin sẽ bị hủy liên kết.\n'
+              '• Dữ liệu trên hệ thống sẽ được dọn dẹp sạch theo tiêu chuẩn bảo vệ dữ liệu người dùng (Nghị định 13/2023/NĐ-CP & Google Play Data Safety).',
+              style: TextStyle(fontSize: 13, height: 1.45, color: Colors.grey),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy bỏ'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: const Text('Xóa tài khoản'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final success = await auth.deleteAccount();
+      if (!context.mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Tài khoản và toàn bộ dữ liệu của bạn đã được xóa thành công.'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage.isNotEmpty
+                ? auth.errorMessage
+                : 'Không thể xóa tài khoản. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -441,6 +540,37 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                         ),
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // 5. VÙNG XÓA TÀI KHOẢN (ACCOUNT DELETION - GOOGLE PLAY REQUIREMENT)
+              if (!auth.isAdmin) ...[
+                Divider(color: borderColor),
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _confirmDeleteAccount(context),
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        color: Colors.redAccent, size: 20),
+                    label: const Text(
+                      'Xóa tài khoản & Dữ liệu người dùng',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Text(
+                    'Tuân thủ chính sách bảo vệ dữ liệu Google Play & Nghị định 13/2023/NĐ-CP',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: subTextColor.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 30),
             ],
           ),

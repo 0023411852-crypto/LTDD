@@ -472,6 +472,41 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 Divider(color: borderColor),
                 _buildActionRow(
+                  icon: Icons.source_rounded,
+                  iconBg: const Color(0xFF8B5CF6).withOpacity(0.14),
+                  iconColor: const Color(0xFF8B5CF6),
+                  title: isVi ? 'Giấy phép mã nguồn mở' : 'Open Source Licenses',
+                  subtitle: isVi
+                      ? 'Bản quyền & giấy phép các thư viện bên thứ ba'
+                      : 'Third-party library copyright notices & licenses',
+                  textColor: textColor,
+                  subTextColor: subTextColor,
+                  onTap: () {
+                    showLicensePage(
+                      context: context,
+                      applicationName:
+                          isVi ? 'Tin tức & Thời tiết' : 'Daily News & Weather Portal',
+                      applicationVersion: 'v1.3.1',
+                      applicationLegalese: isVi
+                          ? 'Bản quyền © 2026 Daily News & Weather Portal.\nỨng dụng sử dụng các thành phần phần mềm nguồn mở tuân thủ theo các giấy phép MIT, BSD, Apache 2.0.'
+                          : 'Copyright © 2026 Daily News & Weather Portal.\nPowered by open source software under MIT, BSD, and Apache 2.0 licenses.',
+                      applicationIcon: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            'assets/images/app_icon.jpg',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Divider(color: borderColor),
+                _buildActionRow(
                   icon: Icons.privacy_tip_outlined,
                   iconBg: const Color(0xFF14B8A6).withOpacity(0.14),
                   iconColor: const Color(0xFF14B8A6),
@@ -985,7 +1020,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // ── DIALOG HIỂN THỊ CHÍNH SÁCH ─────────────────────────────────────────────
+  // ── DIALOG HIỂN THỊ CHÍNH SÁCH & BẢN QUYỀN (NGHỊ ĐỊNH 13 & GOOGLE PLAY COMPLIANCE) ───
   void _showPolicyDialog(
     BuildContext context,
     String title,
@@ -993,22 +1028,180 @@ class SettingsScreen extends StatelessWidget {
     Color textColor,
     bool isVi,
   ) {
+    final isPrivacy = title.contains('Bảo mật') || title.contains('Privacy');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
-        content: Text(
-          isVi
-              ? 'Ứng dụng Tin tức & Thời tiết cam kết bảo mật tối đa dữ liệu của người dùng, tôn trọng quyền riêng tư và chỉ lưu trữ các thông tin thiết yếu phục vụ cho việc cá nhân hóa trải nghiệm đọc tin và dự báo thời tiết.'
-              : 'Daily News & Weather Portal is committed to user data privacy and only retains essential preferences to personalize your reading and weather experience.',
-          style: TextStyle(fontSize: 14, color: textColor.withOpacity(0.85), height: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 10),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+        title: Row(
+          children: [
+            Icon(
+              isPrivacy ? Icons.security_rounded : Icons.gavel_rounded,
+              color: isPrivacy ? const Color(0xFF10B981) : const Color(0xFF2563EB),
+              size: 26,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ],
         ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isPrivacy) ...[
+                  // 1. CHÍNH SÁCH BẢO MẬT (NGHỊ ĐỊNH 13/2023/NĐ-CP & GOOGLE PLAY)
+                  _buildPolicyBadge(
+                    isVi ? 'Tuân thủ Nghị định 13/2023/NĐ-CP & Google Play Data Safety' : 'Compliant with Vietnam Decree 13 & Google Play Policies',
+                    const Color(0xFF10B981),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildPolicyParagraph(
+                    isVi ? '1. Mục đích xử lý dữ liệu' : '1. Purpose of Data Processing',
+                    isVi
+                        ? 'Ứng dụng chỉ xử lý các dữ liệu thiết yếu nhằm cung cấp bản tin dự báo thời tiết địa phương, đề xuất chuyên mục tin tức và đồng bộ danh sách bài viết đã lưu của người dùng.'
+                        : 'The app only processes essential data to deliver localized weather forecasts, news feed customization, and synchronized bookmarks.',
+                    textColor,
+                  ),
+                  _buildPolicyParagraph(
+                    isVi ? '2. Dữ liệu Vị trí địa lý (GPS)' : '2. Geographic Location Data (GPS)',
+                    isVi
+                        ? '• Dữ liệu vị trí GPS chỉ được sử dụng tức thời khi người dùng cho phép để lấy dự báo thời tiết qua Open-Meteo API.\n'
+                          '• Ứng dụng KHÔNG theo dõi hành trình ngầm, KHÔNG lưu trữ lịch sử vị trí và KHÔNG bán hoặc chia sẻ dữ liệu vị trí với bất kỳ bên thứ ba nào.'
+                        : '• GPS location is accessed in real-time only upon explicit consent to query weather from Open-Meteo API.\n'
+                          '• We DO NOT track user movements, DO NOT retain location logs, and DO NOT sell location data to third parties.',
+                    textColor,
+                  ),
+                  _buildPolicyParagraph(
+                    isVi ? '3. Quyền Thông báo (Push Notifications)' : '3. Notification Permissions',
+                    isVi
+                        ? 'Quyền thông báo chỉ được kích hoạt khi có sự đồng ý của bạn (Android 13+). Thông báo chỉ phục vụ mục đích gửi tin nóng và cảnh báo thời tiết nguy hiểm.'
+                        : 'Notification permissions are requested via system prompt (Android 13+). Alerts are limited to breaking news and severe weather warnings.',
+                    textColor,
+                  ),
+                  _buildPolicyParagraph(
+                    isVi ? '4. Quyền của Chủ thể dữ liệu (Xóa tài khoản)' : '4. User Data Rights & Account Deletion',
+                    isVi
+                        ? 'Bạn có toàn quyền chỉnh sửa thông tin cá nhân và có thể yêu cầu XÓA VĨNH VIỄN TÀI KHOẢN & DỮ LIỆU bất cứ lúc nào trong mục "Thông tin cá nhân". Toàn bộ dữ liệu liên kết sẽ được xóa sạch khỏi cơ sở dữ liệu Firebase.'
+                        : 'You retain full rights to edit and PERMANENTLY DELETE YOUR ACCOUNT & DATA anytime via "Personal Information". All user records will be purged from Firebase database.',
+                    textColor,
+                  ),
+                ] else ...[
+                  // 2. ĐIỀU KHOẢN SỬ DỤNG & BẢN QUYỀN NGUỒN TIN (DISCLAIMER)
+                  _buildPolicyBadge(
+                    isVi ? 'Tuyên bố bản quyền báo chí & Miễn trừ trách nhiệm' : 'Editorial Copyright & Disclaimer',
+                    const Color(0xFF2563EB),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildPolicyParagraph(
+                    isVi ? '1. Nguồn trích dẫn tin tức' : '1. Content Aggregation & Sources',
+                    isVi
+                        ? 'Ứng dụng hoạt động như một nền tảng đọc tin tổng hợp (News Aggregator), trích dẫn nội dung tự động từ các nguồn cấp RSS công khai hợp pháp của các cơ quan báo chí chính thống tại Việt Nam (VnExpress, Tuổi Trẻ, Thanh Niên...).'
+                        : 'This application acts as a news aggregator, fetching feeds from public, official RSS channels of Vietnamese mainstream press agencies.',
+                    textColor,
+                  ),
+                  _buildPolicyParagraph(
+                    isVi ? '2. Quyền sở hữu trí tuệ' : '2. Intellectual Property Rights',
+                    isVi
+                        ? '• Bản quyền toàn văn bài báo, tiêu đề, hình ảnh và nhãn hiệu thuộc về cơ quan báo chí phát hành gốc.\n'
+                          '• Ứng dụng luôn ghi rõ nguồn tin gốc và cung cấp tính năng mở trang web chính thức của báo để người dùng đọc toàn văn.'
+                        : '• Full articles, images, and headlines remain the sole property of original publishers.\n'
+                          '• The app strictly attributes all sources and directs users to original publisher websites via WebView.',
+                    textColor,
+                  ),
+                  _buildPolicyParagraph(
+                    isVi ? '3. Cơ chế gỡ bỏ nội dung (Notice & Takedown)' : '3. Notice and Takedown Policy',
+                    isVi
+                        ? 'Chúng tôi tôn trọng quyền tác giả và luật sở hữu trí tuệ. Nếu cơ quan báo chí hoặc đơn vị sở hữu bản quyền có yêu cầu gỡ bỏ hoặc ngừng tổng hợp nguồn tin, ban quản trị cam kết tiếp nhận và xử lý gỡ bỏ trong vòng 24 giờ qua kênh phản hồi.'
+                        : 'We respect copyright laws. If any publisher wishes to discontinue feed aggregation, our team commits to removing feeds within 24 hours upon official notice.',
+                    textColor,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(isVi ? 'Đã hiểu' : 'Understood'),
+            style: FilledButton.styleFrom(
+              backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              foregroundColor: textColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(isVi ? 'Đã hiểu & Đồng ý' : 'Understood & Accept'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicyBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified_user_rounded, color: color, size: 14),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicyParagraph(String heading, String body, Color textColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            heading,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13.5,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            body,
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.45,
+              color: textColor.withOpacity(0.8),
+            ),
           ),
         ],
       ),

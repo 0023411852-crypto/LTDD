@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -909,6 +910,78 @@ class AuthProvider extends ChangeNotifier {
     }
 
     return updateProfile(name: trimmedName);
+  }
+
+  /// Xóa tài khoản người dùng vĩnh viễn (Tuân thủ Google Play Policy & Nghị định 13/2023/NĐ-CP)
+  Future<bool> deleteAccount() async {
+    // Không cho phép xóa tài khoản quản trị viên duy nhất của hệ thống
+    if (isAdmin || email.toLowerCase() == 'admin@portal.com') {
+      _errorMessage = 'Tài khoản quản trị viên hệ thống không thể bị xóa.';
+      notifyListeners();
+      return false;
+    }
+
+    final targetUid = uid;
+    final user = _user ?? _auth?.currentUser;
+
+    _status = AuthStatus.authenticating;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      // 1. Dọn dẹp dữ liệu người dùng trên Firebase Realtime Database
+      if (targetUid != null && targetUid.isNotEmpty) {
+        try {
+          final db = FirebaseDatabase.instance.ref('users/$targetUid');
+          await db.remove().timeout(const Duration(seconds: 10));
+        } catch (e) {
+          debugPrint('Warning: Delete remote user database record error: $e');
+        }
+      }
+
+      // 2. Xóa tài khoản khỏi Firebase Authentication
+      if (user != null) {
+        try {
+          await user.delete();
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'requires-recent-login') {
+            _errorMessage =
+                'Vì lý do bảo mật, vui lòng đăng nhập lại tài khoản trước khi thực hiện xóa vĩnh viễn.';
+            _status = AuthStatus.authenticated;
+            notifyListeners();
+            return false;
+          }
+          rethrow;
+        }
+      }
+
+      // 3. Xóa thông tin lưu trữ cục bộ
+      await _clearActiveSession();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('profile_name');
+      await prefs.remove('profile_phone');
+      await prefs.remove('profile_photo');
+      await prefs.remove('profile_bio');
+
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
+
+      _user = null;
+      _isCustomAdminLoggedIn = false;
+      _customUserEmail = null;
+      _customUserName = null;
+      _customUserUid = null;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('deleteAccount error: $e');
+      _errorMessage = 'Không thể xóa tài khoản: ${e.toString()}';
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return false;
+    }
   }
 
   String _getVietnameseErrorMessage(String code, [String? message]) {
