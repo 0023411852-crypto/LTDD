@@ -1,46 +1,88 @@
-# Daily News & Weather Portal — Đề tài 5
+# 📱 Daily News & Weather Portal
 
-Ứng dụng Flutter đọc tin tức tổng hợp (RSS báo Việt Nam) + thời tiết (Open-Meteo).
+[![Release](https://img.shields.io/badge/Release-v1.1.0-blue.svg)](https://github.com/0023411852-crypto/LTDD/releases/tag/v1.1.0)
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B.svg?logo=flutter)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.3+-0175C2.svg?logo=dart)](https://dart.dev)
+[![Platform](https://img.shields.io/badge/Platform-Android-green.svg?logo=android)](https://www.android.com)
+[![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-## Đã có trong bản này (Bước 1)
-- Màn hình **Home**: Weather Card + Chips chuyên mục + Danh sách tin mới, Pull-to-refresh, đủ 4 trạng thái loading / data / empty / error
-- **Chi tiết bài báo**: WebView đọc bài gốc + nút Bookmark (UI, lưu thật bằng Hive ở bước sau)
-- **Chi tiết thời tiết**: hiện tại + dự báo 7 ngày, chọn thành phố mẫu trong code
-- Models: `Article`, `Weather` — Services: `NewsService` (RSS VnExpress / Tuổi Trẻ / Thanh Niên), `WeatherService` (Open-Meteo, không cần API key)
-- Dark Mode theo hệ thống (Material 3)
+> **Đề tài 5:** Ứng dụng đọc tin tức tổng hợp thời gian thực kết hợp dự báo thời tiết thông minh & phân quyền quản trị cao cấp.
 
-## Cách chạy trên máy của bạn
+---
 
-> Lưu ý: Thư mục này chứa phần `lib/` + `pubspec.yaml` do Muse tạo sẵn.
-> Bạn tạo khung Android/iOS bằng lệnh ở bước 1, rồi ghi đè `lib/` và `pubspec.yaml` bằng file trong thư mục này.
+## 🌟 Điểm nổi bật phiên bản v1.1.0 (Highlights)
 
-```bash
-# 1. Cài Flutter: https://docs.flutter.dev/get-started/install  (kiểm tra: flutter doctor)
-# 2. Tạo khung project (tên phải đúng để khớp package)
-flutter create daily_news_weather_portal
-# 3. Copy lib/, pubspec.yaml, analysis_options.yaml, test/ trong thư mục này đè vào project vừa tạo
-# 4. Lấy package + chạy
-cd daily_news_weather_portal
-flutter pub get
-flutter run
-```
+- 🎨 **Giao diện hiện đại & mượt mà (Modern Fluid UI)**: Thiết kế Material 3 cao cấp, hiệu ứng Breathing Glow Animation trên logo chào mừng, hỗ trợ Dark Mode / Light Mode thích ứng.
+- 📰 **Tin tức đa nguồn chuẩn xác**: Tự động bóc tách tin tức từ các báo điện tử hàng đầu Việt Nam (VnExpress, Tuổi Trẻ, Thanh Niên...) với WebView đọc bài trực tiếp.
+- 🌤️ **Dự báo thời tiết thời gian thực**: Tích hợp Open-Meteo API và định vị GPS thực tế, dự báo chi tiết theo giờ và 7 ngày tới cho 63 tỉnh/thành phố tại Việt Nam.
+- ❤️ **Quản lý địa điểm yêu thích (Không Mock Data)**: Lưu trữ các thành phố quan tâm trực tiếp vào bộ nhớ máy, cập nhật trạng thái thời tiết sống động.
+- 🛡️ **Bảng điều khiển Quản trị viên (Admin Panel)**: Bổ sung nguồn RSS tùy chỉnh, kiểm tra tính hợp lệ HTTPS, duyệt/ẩn bài viết và xóa bài viết vào Blacklist vĩnh viễn.
+- 🔔 **Hệ thống thông báo phân luồng**: Tách biệt giữa Tin nóng phá cách (Breaking News) và Bản tin thời tiết buổi sáng lúc 07:00.
 
-Cần quyền Internet (đã có mặc định khi flutter create ở chế độ debug).
-Khi chạy release trên Android, kiểm tra `android/app/src/main/AndroidManifest.xml` có:
-`<uses-permission android:name="android.permission.INTERNET"/>`
+---
 
-## Cấu trúc
-```
+## 🏗️ Kiến trúc dự án (Architecture)
+
+Dự án áp dụng mô hình **Feature-First + Provider Pattern** giúp tách bạch hoàn toàn giữa Giao diện (Presentation), Quản lý trạng thái (State Management) và Tầng dịch vụ (Services):
+
+```text
 lib/
-  main.dart
-  models/article.dart, weather.dart
-  services/news_service.dart, weather_service.dart
-  screens/home_screen.dart, article_detail_screen.dart, weather_detail_screen.dart
-  widgets/weather_card.dart, news_card.dart
+├── features/
+│   ├── admin/             # Bảng quản trị nguồn tin, duyệt & xóa bài viết
+│   ├── auth/              # Xác thực người dùng, đăng nhập Email & Google
+│   ├── favorites/         # Quản lý địa điểm và bài báo yêu thích (Persistence)
+│   ├── home/              # Trang chủ tổng hợp thẻ thời tiết & dòng tin tức
+│   ├── navigation/        # Màn hình chờ (Splash Screen) & thanh điều hướng chính
+│   ├── news/              # Danh sách tin, phân mục, đọc bài báo chi tiết
+│   ├── notifications/     # Thiết lập kênh thông báo & quyền hệ thống
+│   ├── profile/           # Thông tin tài khoản & nhật ký hoạt động
+│   ├── search/            # Tìm kiếm thông minh phân loại Tin tức / Thời tiết
+│   ├── settings/          # Chỉnh cỡ chữ, đổi ngôn ngữ Anh-Việt, dọn cache
+│   └── weather/           # Dự báo khí hậu chi tiết, biểu đồ thời tiết
+├── models/                # Cấu trúc dữ liệu: Article, Weather, City, RSSSource
+├── services/              # Tầng gọi API: NewsService, WeatherService, ContentService
+└── main.dart              # Khởi tạo ứng dụng & MultiProvider
 ```
 
-## Bước tiếp theo (theo lộ trình)
-1. Tìm kiếm tin theo từ khóa
-2. Lưu Bookmark thật bằng Hive + màn hình Đã lưu / đọc offline
-3. GPS thật (geolocator) + tìm thành phố cho thời tiết
-4. Build APK nộp bài: `flutter build apk --release`
+---
+
+## 🚀 Cài đặt & Trải nghiệm (Getting Started)
+
+### 1. Tải về file APK cài đặt trực tiếp
+Người dùng Android có thể tải và cài đặt trực tiếp bản phát hành mới nhất:
+- 📦 **Tải về:** [`daily_news_weather.apk`](daily_news_weather.apk) *(Phiên bản v1.1.0 - 57.5 MB)*
+
+### 2. Chạy từ mã nguồn (Developers)
+```bash
+# 1. Clone repository về máy
+git clone https://github.com/0023411852-crypto/LTDD.git
+cd LTDD
+
+# 2. Cài đặt các thư viện phụ thuộc
+flutter pub get
+
+# 3. Chạy ứng dụng trên thiết bị / emulator
+flutter run
+
+# 4. Đóng gói file APK Release
+flutter build apk --release
+```
+
+---
+
+## 📊 So sánh phiên bản (Version Changelog)
+
+| Tiêu chí | Bản v1.0.0 | Bản v1.1.0 |
+| :--- | :--- | :--- |
+| **Splash Screen** | Thanh loading tĩnh đơn giản | Logo nhịp thở phát sáng kép, thanh làm tươi mượt mà |
+| **Tìm kiếm** | Chưa phân tách nguồn tin | Bộ lọc 3 chế độ (Tất cả / Tin tức / Thời tiết), lịch sử tìm kiếm |
+| **Địa điểm yêu thích** | Mock data tĩnh | Lưu trữ thật 63 tỉnh/thành, cập nhật nhiệt độ thời gian thực |
+| **Quản trị nguồn tin** | Danh mục cố định | Thêm/xóa nguồn RSS động, duyệt/ẩn bài viết, blacklist |
+| **Thông báo** | Kênh thông báo cơ bản | Phân luồng tin nóng vs thời tiết 07:00 sáng, tương thích Android 14+ |
+| **Hiệu năng & Tối ưu** | Cấu trúc Provider dùng chung | Tách Provider theo feature, tối ưu tree-shaking 98.7% font asset |
+
+---
+
+## 👥 Nhóm phát triển & Giấy phép
+- **Repository:** [https://github.com/0023411852-crypto/LTDD](https://github.com/0023411852-crypto/LTDD)
+- **Bản quyền:** Dự án được phát triển phục vụ mục đích học tập và nghiên cứu (Lập trình thiết bị di động).
