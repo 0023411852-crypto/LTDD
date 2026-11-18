@@ -690,93 +690,106 @@ class SettingsScreen extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: Row(
-          children: [
-            Icon(Icons.format_size_rounded, color: primaryColor, size: 24),
-            const SizedBox(width: 10),
-            Text(
-              isVi ? 'Chọn cỡ chữ đọc bài' : 'Reading Font Size',
-              style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 17),
+      builder: (ctx) => Consumer<SettingsProvider>(
+        builder: (ctx2, currentSettings, _) {
+          return AlertDialog(
+            backgroundColor: cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+            title: Row(
+              children: [
+                Icon(Icons.format_size_rounded, color: primaryColor, size: 24),
+                const SizedBox(width: 10),
+                Text(
+                  isVi ? 'Chọn cỡ chữ đọc bài' : 'Reading Font Size',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 17),
+                ),
+              ],
             ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Preview text
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: primaryColor.withOpacity(0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isVi ? 'Xem trước nội dung:' : 'Content Preview:',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Preview text
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: primaryColor.withOpacity(0.2)),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isVi
-                        ? 'Dự báo thời tiết hôm nay trời nắng nhẹ, nhiệt độ 28°C. Không khí trong lành.'
-                        : 'Today forecast shows mild sunlight, temperature 28°C. Clean fresh air.',
-                    style: TextStyle(
-                      fontSize: 15.0 * settings.fontScale,
-                      color: textColor,
-                      height: 1.4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isVi ? 'Xem trước nội dung:' : 'Content Preview:',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor),
+                          ),
+                          Text(
+                            '${(currentSettings.fontScale * 100).round()}%',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        isVi
+                            ? 'Dự báo thời tiết hôm nay trời nắng nhẹ, nhiệt độ 28°C. Không khí trong lành.'
+                            : 'Today forecast shows mild sunlight, temperature 28°C. Clean fresh air.',
+                        style: TextStyle(
+                          fontSize: 15.0 * currentSettings.fontScale,
+                          color: textColor,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                ...sizes.map((item) {
+                  final sizeName = item['name']!;
+                  final scale = item['scale']!;
+                  final isSelected = currentSettings.fontSize == sizeName;
+
+                  return ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    tileColor: isSelected ? primaryColor.withOpacity(0.1) : null,
+                    leading: Icon(
+                      isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                      color: isSelected ? primaryColor : Colors.grey,
+                      size: 20,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            ...sizes.map((item) {
-              final sizeName = item['name']!;
-              final scale = item['scale']!;
-              final isSelected = settings.fontSize == sizeName;
-
-              return ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                tileColor: isSelected ? primaryColor.withOpacity(0.1) : null,
-                leading: Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                  color: isSelected ? primaryColor : Colors.grey,
-                  size: 20,
-                ),
-                title: Text(
-                  sizeName,
-                  style: TextStyle(
-                    color: isSelected ? primaryColor : textColor,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  ),
-                ),
-                trailing: Text(
-                  scale,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                ),
-                onTap: () {
-                  settings.setFontSize(sizeName);
-                  Navigator.pop(ctx);
-                  _showToast(
-                    context,
-                    isVi
-                        ? 'Đã đổi cỡ chữ sang: $sizeName ($scale)'
-                        : 'Font size changed to: $sizeName ($scale)',
+                    title: Text(
+                      sizeName,
+                      style: TextStyle(
+                        color: isSelected ? primaryColor : textColor,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                    trailing: Text(
+                      scale,
+                      style: TextStyle(fontSize: 12, color: isSelected ? primaryColor : Colors.grey.shade500),
+                    ),
+                    onTap: () async {
+                      await currentSettings.setFontSize(sizeName);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      _showToast(
+                        context,
+                        isVi
+                            ? 'Đã đổi cỡ chữ sang: $sizeName ($scale)'
+                            : 'Font size changed to: $sizeName ($scale)',
+                      );
+                    },
                   );
-                },
-              );
-            }),
-          ],
-        ),
+                }),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

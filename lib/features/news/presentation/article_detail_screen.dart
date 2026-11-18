@@ -28,7 +28,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) {
-          if (mounted) setState(() => _webLoading = false);
+          if (mounted) {
+            setState(() => _webLoading = false);
+            try {
+              final scale = context.read<SettingsProvider>().fontScale;
+              _applyWebFontScale(scale);
+            } catch (_) {}
+          }
         },
         onNavigationRequest: (request) {
           final reqUri = Uri.tryParse(request.url);
@@ -61,6 +67,179 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     return 'Vừa xong';
   }
 
+  void _applyWebFontScale(double scale) {
+    if (_webController != null) {
+      _webController?.runJavaScript(
+        "document.body.style.fontSize = '${(scale * 100).round()}%';"
+      ).catchError((_) {});
+    }
+  }
+
+  void _showFontSizeBottomSheet(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Consumer<SettingsProvider>(
+          builder: (ctx2, settings, _) {
+            final sizes = [
+              {'name': 'Nhỏ', 'scale': '88%'},
+              {'name': 'Tiêu chuẩn', 'scale': '100%'},
+              {'name': 'Lớn', 'scale': '118%'},
+              {'name': 'Rất lớn', 'scale': '135%'},
+            ];
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.format_size_rounded,
+                              color: cs.primary, size: 22),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Tùy chỉnh cỡ chữ đọc bài',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${(settings.fontScale * 100).round()}%',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: cs.primary.withOpacity(0.2)),
+                    ),
+                    child: Text(
+                      'Báo điện tử: Cập nhật tin tức & dự báo thời tiết 24/7 với cỡ chữ rõ ràng, sắc nét.',
+                      style: TextStyle(
+                        fontSize: 14 * settings.fontScale,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: sizes.map((item) {
+                      final name = item['name']!;
+                      final scale = item['scale']!;
+                      final isSel = settings.fontSize == name;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: InkWell(
+                            onTap: () {
+                              settings.setFontSize(name);
+                              _applyWebFontScale(settings.fontScale);
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSel
+                                    ? cs.primary
+                                    : cs.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSel
+                                      ? cs.primary
+                                      : cs.primary.withOpacity(0.2),
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          isSel ? Colors.white : cs.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    scale,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: isSel
+                                          ? Colors.white.withOpacity(0.85)
+                                          : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonal(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Xong'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _toggleAudioReader() {
     setState(() => _isPlayingAudio = !_isPlayingAudio);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -90,25 +269,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.format_size_rounded),
-            tooltip: 'Đổi cỡ chữ',
-            onPressed: () {
-              // Cycle through font sizes: Nhỏ -> Tiêu chuẩn -> Lớn -> Rất lớn
-              final current = settingsProvider.fontSize;
-              final next = current == 'Nhỏ'
-                  ? 'Tiêu chuẩn'
-                  : current == 'Tiêu chuẩn'
-                      ? 'Lớn'
-                      : current == 'Lớn'
-                          ? 'Rất lớn'
-                          : 'Nhỏ';
-              settingsProvider.setFontSize(next);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Cỡ chữ đọc bài: $next'),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
+            tooltip: 'Đổi cỡ chữ đọc bài',
+            onPressed: () => _showFontSizeBottomSheet(context),
           ),
           IconButton(
             icon: Icon(
@@ -248,7 +410,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   Text(
                     widget.article.title,
                     style: tt.headlineSmall?.copyWith(
-                      fontSize: (tt.headlineSmall?.fontSize ?? 24) * fontScale,
                       fontWeight: FontWeight.w800,
                       height: 1.35,
                     ),
@@ -281,7 +442,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         ? widget.article.description
                         : 'Nội dung tóm tắt đang được cập nhật từ ${widget.article.source}. Bạn có thể bấm nút bên dưới để đọc bài viết gốc đầy đủ.',
                     style: tt.bodyLarge?.copyWith(
-                      fontSize: (tt.bodyLarge?.fontSize ?? 16) * fontScale,
                       height: 1.6,
                       color: cs.onSurface,
                     ),
