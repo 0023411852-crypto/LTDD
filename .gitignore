@@ -39,8 +39,6 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Built packages & binaries
-*.apk
 
 
 # Android Studio will place build artifacts here
