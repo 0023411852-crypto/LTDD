@@ -407,7 +407,7 @@ class SettingsScreen extends StatelessWidget {
                   iconBg: const Color(0xFF1E60F2).withOpacity(0.14),
                   iconColor: const Color(0xFF1E60F2),
                   title: isVi ? 'Phiên bản ứng dụng' : 'App Version',
-                  subtitle: 'Daily News & Weather v1.1.0 (Build 2026)',
+                  subtitle: 'Daily News & Weather v1.2.0 (Build 2026)',
                   textColor: textColor,
                   subTextColor: subTextColor,
                   onTap: () {},

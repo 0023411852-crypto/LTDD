@@ -2121,6 +2121,208 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         ),
         const SizedBox(height: 16),
 
+        // Danh sách tài khoản đã đăng ký (Tích hợp hợp nhất Email & Google)
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: auth.getRegisteredUsersList(),
+          builder: (context, snapshot) {
+            final users = snapshot.data ?? [];
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _surfaceColor,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.people_alt_rounded,
+                              color: Color(0xFF1E60F2), size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Danh sách tài khoản hệ thống',
+                            style: TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.bold,
+                              color: _textColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E60F2).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${users.length} tài khoản',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E60F2),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (users.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Center(
+                        child: Text(
+                          'Chưa có dữ liệu người dùng đăng ký',
+                          style: TextStyle(color: _subTextColor, fontSize: 13),
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: users.length,
+                      separatorBuilder: (_, __) =>
+                          Divider(color: _borderColor.withOpacity(0.5)),
+                      itemBuilder: (context, index) {
+                        final u = users[index];
+                        final uEmail = u['email'] as String? ?? '';
+                        final uName = u['name'] as String? ?? 'Người dùng';
+                        final hasPassword =
+                            u['password'] != null || u['hasPassword'] == true;
+                        final isGoogleLinked =
+                            u['isGoogleLinked'] == true || u['googleId'] != null;
+                        final isUserAdmin =
+                            u['isAdmin'] == true || uEmail.contains('admin');
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: isUserAdmin
+                                    ? const Color(0xFF059669).withOpacity(0.15)
+                                    : const Color(0xFF1E60F2).withOpacity(0.15),
+                                child: Text(
+                                  uName.isNotEmpty
+                                      ? uName[0].toUpperCase()
+                                      : 'U',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: isUserAdmin
+                                        ? const Color(0xFF059669)
+                                        : const Color(0xFF1E60F2),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      uName,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: _textColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      uEmail,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: _subTextColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        if (hasPassword)
+                                          Container(
+                                            margin: const EdgeInsets.only(right: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF2563EB)
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: const Text(
+                                              '📧 Email/Mật khẩu',
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF2563EB),
+                                              ),
+                                            ),
+                                          ),
+                                        if (isGoogleLinked)
+                                          Container(
+                                            margin: const EdgeInsets.only(right: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEA4335)
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: const Text(
+                                              '🌐 Google Liên kết',
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFFEA4335),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isUserAdmin
+                                      ? const Color(0xFFECFDF5)
+                                      : _chipColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isUserAdmin ? 'Admin' : 'User',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isUserAdmin
+                                        ? const Color(0xFF059669)
+                                        : _subTextColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+
         // Hướng dẫn quản trị người dùng qua Firebase Authentication
         Container(
           padding: const EdgeInsets.all(16),

@@ -358,6 +358,144 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<String?> _getLocalPasswordForEmail(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      final normalized = email.trim().toLowerCase();
+      for (final u in usersJson) {
+        try {
+          final map = jsonDecode(u) as Map<String, dynamic>;
+          if ((map['email'] as String?)?.trim().toLowerCase() == normalized) {
+            final pass = map['password'] as String?;
+            if (pass != null && pass.isNotEmpty) return pass;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> _getLocalAccountByEmail(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      final normalized = email.trim().toLowerCase();
+      for (final u in usersJson) {
+        try {
+          final map = jsonDecode(u) as Map<String, dynamic>;
+          if ((map['email'] as String?)?.trim().toLowerCase() == normalized) {
+            return Map<String, dynamic>.from(map);
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _mergeOrSaveLocalAccount({
+    required String email,
+    required String name,
+    required String uid,
+    String? password,
+    String? photoUrl,
+    String? googleId,
+    bool isGoogleLinked = false,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      final normalized = email.trim().toLowerCase();
+
+      int existingIndex = -1;
+      Map<String, dynamic> mergedMap = {
+        'email': normalized,
+        'name': name,
+        'uid': uid,
+        'isGoogleLinked': isGoogleLinked,
+      };
+
+      for (int i = 0; i < usersJson.length; i++) {
+        try {
+          final map = jsonDecode(usersJson[i]) as Map<String, dynamic>;
+          if ((map['email'] as String?)?.trim().toLowerCase() == normalized) {
+            existingIndex = i;
+            mergedMap = Map<String, dynamic>.from(map);
+            break;
+          }
+        } catch (_) {}
+      }
+
+      // Hợp nhất dữ liệu vào 1 tài khoản duy nhất (Merge Data)
+      mergedMap['email'] = normalized;
+      mergedMap['uid'] = mergedMap['uid'] ?? uid;
+      if (name.isNotEmpty && (mergedMap['name'] == null || (mergedMap['name'] as String).isEmpty)) {
+        mergedMap['name'] = name;
+      }
+      if (password != null && password.isNotEmpty) {
+        mergedMap['password'] = password;
+      }
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        mergedMap['photoUrl'] = photoUrl;
+      }
+      if (googleId != null && googleId.isNotEmpty) {
+        mergedMap['googleId'] = googleId;
+      }
+      if (isGoogleLinked) {
+        mergedMap['isGoogleLinked'] = true;
+      }
+
+      final encoded = jsonEncode(mergedMap);
+      if (existingIndex != -1) {
+        usersJson[existingIndex] = encoded;
+      } else {
+        usersJson.add(encoded);
+      }
+      await prefs.setStringList('local_registered_users', usersJson);
+    } catch (_) {}
+  }
+
+  Future<List<Map<String, dynamic>>> getRegisteredUsersList() async {
+    final list = <Map<String, dynamic>>[];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      final seenEmails = <String>{};
+
+      for (final u in usersJson) {
+        try {
+          final map = jsonDecode(u) as Map<String, dynamic>;
+          final email = (map['email'] as String?)?.toLowerCase() ?? '';
+          if (email.isNotEmpty && !seenEmails.contains(email)) {
+            seenEmails.add(email);
+            list.add(Map<String, dynamic>.from(map));
+          }
+        } catch (_) {}
+      }
+
+      // Thêm tài khoản Admin và User mẫu mặc định nếu chưa có trong danh sách
+      if (!seenEmails.contains('admin@portal.com')) {
+        list.insert(0, {
+          'email': 'admin@portal.com',
+          'name': 'Quản trị viên Hệ thống',
+          'uid': 'admin_root_sys',
+          'isAdmin': true,
+          'hasPassword': true,
+        });
+      }
+      if (!seenEmails.contains('user@portal.com')) {
+        list.add({
+          'email': 'user@portal.com',
+          'name': 'Người Dùng Portal',
+          'uid': 'usr_portal_demo',
+          'isAdmin': false,
+          'hasPassword': true,
+        });
+      }
+    } catch (_) {}
+    return list;
+  }
+
   Future<bool> _registerLocalAccount(
     String email,
     String password,
@@ -366,38 +504,58 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      final normalized = email.trim().toLowerCase();
 
-      for (final u in usersJson) {
+      for (int i = 0; i < usersJson.length; i++) {
         try {
-          final map = jsonDecode(u) as Map<String, dynamic>;
-          if (map['email'] == email) {
-            _errorMessage = 'Email này đã được sử dụng để đăng ký.';
-            _status = AuthStatus.unauthenticated;
+          final map = jsonDecode(usersJson[i]) as Map<String, dynamic>;
+          if ((map['email'] as String?)?.trim().toLowerCase() == normalized) {
+            // NẾU TÀI KHOẢN NÀY ĐÃ TỒN TẠI (VD: từ Google trước đó):
+            // Hợp nhất mật khẩu vào cùng 1 user, KHÔNG TẠO USER THỨ HAI!
+            map['password'] = password;
+            if (name.isNotEmpty) map['name'] = name;
+            usersJson[i] = jsonEncode(map);
+            await prefs.setStringList('local_registered_users', usersJson);
+
+            final targetUid = map['uid'] as String? ??
+                'usr_${normalized.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+            _customUserEmail = normalized;
+            _customUserName = map['name'] ?? name;
+            _customUserUid = targetUid;
+            _isCustomAdminLoggedIn = normalized.contains('admin');
+            _status = AuthStatus.authenticated;
+            _errorMessage = '';
+
+            await _saveActiveSession(normalized, _customUserName!, targetUid,
+                isAdmin: _isCustomAdminLoggedIn);
             notifyListeners();
-            return false;
+            return true;
           }
         } catch (_) {}
       }
 
-      final newUid = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final newUid =
+          'usr_${normalized.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
       final newRecord = jsonEncode({
-        'email': email,
+        'email': normalized,
         'password': password,
         'name': name,
         'uid': newUid,
+        'isGoogleLinked': false,
       });
 
       usersJson.add(newRecord);
       await prefs.setStringList('local_registered_users', usersJson);
 
-      _customUserEmail = email;
+      _customUserEmail = normalized;
       _customUserName = name;
       _customUserUid = newUid;
-      _isCustomAdminLoggedIn = email.contains('admin');
+      _isCustomAdminLoggedIn = normalized.contains('admin');
       _status = AuthStatus.authenticated;
       _errorMessage = '';
 
-      await _saveActiveSession(email, name, newUid, isAdmin: _isCustomAdminLoggedIn);
+      await _saveActiveSession(normalized, name, newUid,
+          isAdmin: _isCustomAdminLoggedIn);
       notifyListeners();
       return true;
     } catch (e) {
@@ -534,32 +692,98 @@ class AuthProvider extends ChangeNotifier {
         idToken: googleAuth.idToken,
       );
 
-      final auth = _auth;
-      UserCredential? userCredential;
-      if (auth != null) {
-        userCredential = await auth.signInWithCredential(credential);
-      }
-
-      final email = googleUser.email;
+      final email = googleUser.email.trim().toLowerCase();
       final name = googleUser.displayName ?? email.split('@').first;
       final photo = googleUser.photoUrl;
-      final uid = userCredential?.user?.uid ?? 'google_${googleUser.id}';
+
+      // 1. Kiểm tra tài khoản đã tồn tại trước đó chưa (Đăng ký bằng Email trước đó)
+      final existingAccount = await _getLocalAccountByEmail(email);
+      final existingPassword = await _getLocalPasswordForEmail(email);
+
+      final auth = _auth;
+      UserCredential? userCredential;
+
+      if (auth != null) {
+        try {
+          // A. Nếu tài khoản đã được đăng ký bằng Email & Password trước đó trong phiên hoặc Firebase:
+          // Đăng nhập vào tài khoản gốc và Liên kết (Link) với Google Credential để Firebase Auth KHÔNG TẠO 2 USER!
+          if (existingPassword != null) {
+            try {
+              final emailAuth = await auth.signInWithEmailAndPassword(
+                email: email,
+                password: existingPassword,
+              );
+              if (emailAuth.user != null) {
+                try {
+                  await emailAuth.user!.linkWithCredential(credential);
+                } catch (_) {}
+                userCredential = emailAuth;
+              }
+            } catch (_) {
+              userCredential = await auth.signInWithCredential(credential);
+            }
+          } else {
+            userCredential = await auth.signInWithCredential(credential);
+          }
+        } on FirebaseAuthException catch (e) {
+          // B. Nếu gặp lỗi account-exists-with-different-credential:
+          // Tự động liên kết mượt mà với tài khoản email/mật khẩu sẵn có
+          if (e.code == 'account-exists-with-different-credential' &&
+              existingPassword != null) {
+            try {
+              final emailAuth = await auth.signInWithEmailAndPassword(
+                email: email,
+                password: existingPassword,
+              );
+              if (emailAuth.user != null) {
+                try {
+                  await emailAuth.user!.linkWithCredential(credential);
+                } catch (_) {}
+                userCredential = emailAuth;
+              }
+            } catch (_) {}
+          } else {
+            rethrow;
+          }
+        }
+      }
+
+      // 2. Đồng nhất User ID (Canonical UID) duy nhất theo Email:
+      // Giữ nguyên UID đã đăng ký bằng Email trước đó để KHÔNG BỊ TÁCH THÀNH 2 USER
+      final String unifiedUid = userCredential?.user?.uid ??
+          existingAccount?['uid'] ??
+          'usr_${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+
+      // 3. Hợp nhất thông tin tài khoản (Unified Account Record)
+      await _mergeOrSaveLocalAccount(
+        email: email,
+        name: existingAccount?['name'] ?? name,
+        uid: unifiedUid,
+        photoUrl: photo ?? existingAccount?['photoUrl'],
+        googleId: googleUser.id,
+        isGoogleLinked: true,
+        password: existingPassword,
+      );
 
       _user = userCredential?.user;
       _customUserEmail = email;
-      _customUserName = name;
-      _customUserPhotoUrl = photo;
-      _customUserUid = uid;
+      _customUserName = existingAccount?['name'] ?? name;
+      _customUserPhotoUrl = photo ?? existingAccount?['photoUrl'];
+      _customUserUid = unifiedUid;
       _isCustomAdminLoggedIn = email.contains('admin');
       _status = AuthStatus.authenticated;
       _errorMessage = '';
 
-      await _saveActiveSession(email, name, uid,
-          isAdmin: _isCustomAdminLoggedIn);
+      await _saveActiveSession(
+        email,
+        _customUserName!,
+        unifiedUid,
+        isAdmin: _isCustomAdminLoggedIn,
+      );
       if (photo != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_profile_photo', photo);
-        await prefs.setString('user_profile_name', name);
+        await prefs.setString('user_profile_name', _customUserName!);
       }
 
       notifyListeners();

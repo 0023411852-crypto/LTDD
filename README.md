@@ -1,6 +1,6 @@
 # 📱 Daily News & Weather Portal
 
-[![Release](https://img.shields.io/badge/Release-v1.1.0-blue.svg)](https://github.com/0023411852-crypto/LTDD/releases/tag/v1.1.0)
+[![Release](https://img.shields.io/badge/Release-v1.2.0-blue.svg)](https://github.com/0023411852-crypto/LTDD/releases/tag/v1.2.0)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B.svg?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.3+-0175C2.svg?logo=dart)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg?logo=android)](https://www.android.com)
