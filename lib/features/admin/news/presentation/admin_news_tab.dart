@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/widgets/app_confirmation_dialog.dart';
 import '../../../../models/article.dart';
 import '../controllers/admin_news_controller.dart';
 
@@ -296,49 +297,40 @@ class AdminNewsTab extends StatelessWidget {
 
                                 // Delete article
                                 InkWell(
-                                  onTap: () {
-                                    showDialog(
+                                  onTap: () async {
+                                    final confirmed = await showAppConfirmationDialog(
                                       context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(16)),
-                                        title: const Text(
-                                            'Xác nhận xóa bài viết',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold)),
-                                        content: Text(
-                                            'Xóa bài viết "${article.title}" khỏi hệ thống ứng dụng?'),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx),
-                                              child: const Text('Hủy')),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    const Color(0xFFEF4444)),
-                                            onPressed: () async {
-                                              Navigator.pop(ctx);
-                                              await controller
-                                                  .deleteArticlePermanently(
-                                                      article.title);
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                const SnackBar(
-                                                    content: Text(
-                                                        'Đã xóa bài viết khỏi ứng dụng'),
-                                                    backgroundColor:
-                                                        Colors.red),
-                                              );
-                                            },
-                                            child: const Text('Xóa ngay',
-                                                style: TextStyle(
-                                                    color: Colors.white)),
-                                          ),
-                                        ],
-                                      ),
+                                      type: AppConfirmationType.danger,
+                                      icon: Icons.delete_outline_rounded,
+                                      title: 'Xác nhận xóa bài viết?',
+                                      description:
+                                          'Bài viết "${article.title}" sẽ bị xóa vĩnh viễn khỏi danh sách bài viết.',
+                                      confirmText: 'Xóa bài viết',
+                                      cancelText: 'Hủy bỏ',
                                     );
+                                    if (confirmed == true && context.mounted) {
+                                      await controller.deleteArticlePermanently(article.title);
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: const Row(
+                                            children: [
+                                              Icon(Icons.check_circle_rounded,
+                                                  color: Colors.white, size: 20),
+                                              SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text('Đã xóa bài viết khỏi ứng dụng'),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: const Color(0xFFEF4444),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   },
                                   borderRadius: BorderRadius.circular(6),
                                   child: const Padding(

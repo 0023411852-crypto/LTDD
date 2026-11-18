@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/widgets/app_confirmation_dialog.dart';
 import '../controllers/admin_notifications_controller.dart';
 
 class AdminNotificationsTab extends StatefulWidget {
@@ -234,7 +235,7 @@ class _AdminNotificationsTabState extends State<AdminNotificationsTab> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     final title = _titleController.text.trim();
                     final body = _bodyController.text.trim();
 
@@ -247,6 +248,68 @@ class _AdminNotificationsTabState extends State<AdminNotificationsTab> {
                       );
                       return;
                     }
+
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final confirmed = await showAppConfirmationDialog(
+                      context: context,
+                      type: AppConfirmationType.notification,
+                      icon: Icons.campaign_rounded,
+                      title: 'Xác nhận phát sóng thông báo?',
+                      description: 'Thông báo sẽ được gửi trực tiếp đến toàn bộ người dùng đang kích hoạt nhận tin.',
+                      confirmText: 'Phát sóng ngay',
+                      cancelText: 'Xem lại',
+                      extraContent: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1654F0).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                controller.selectedType,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1654F0),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                                color: widget.textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              body,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: widget.subTextColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+
+                    if (confirmed != true) return;
 
                     final success = controller.broadcast(
                       title: title,
@@ -280,6 +343,8 @@ class _AdminNotificationsTabState extends State<AdminNotificationsTab> {
                             ],
                           ),
                           backgroundColor: const Color(0xFF10B981),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       );
                     }

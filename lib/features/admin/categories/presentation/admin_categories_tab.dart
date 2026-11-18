@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/widgets/app_confirmation_dialog.dart';
 import '../../../../models/article.dart';
 import '../../../../services/news_service.dart';
 import '../controllers/admin_categories_controller.dart';
@@ -420,49 +421,40 @@ class AdminCategoriesTab extends StatelessWidget {
                               icon: const Icon(Icons.delete_outline_rounded,
                                   color: Color(0xFFEF4444), size: 20),
                               tooltip: 'Xóa nguồn này',
-                              onPressed: () {
-                                showDialog(
+                              onPressed: () async {
+                                final confirmed = await showAppConfirmationDialog(
                                   context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(16)),
-                                    title: const Text('Xác nhận xóa nguồn tin',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                    content: Text(
-                                        'Bạn có chắc muốn xóa nguồn tin "${cat.label}" (${cat.source}) khỏi hệ thống không?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(ctx),
-                                        child: const Text('Hủy'),
-                                      ),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0xFFEF4444)),
-                                        onPressed: () async {
-                                          Navigator.pop(ctx);
-                                          await controller
-                                              .deleteCategory(cat.id);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                  'Đã xóa nguồn tin "${cat.label}"'),
-                                              backgroundColor: Colors.red,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                        },
-                                        child: const Text('Xóa nguồn',
-                                            style: TextStyle(
-                                                color: Colors.white)),
-                                      ),
-                                    ],
-                                  ),
+                                  type: AppConfirmationType.danger,
+                                  icon: Icons.delete_outline_rounded,
+                                  title: 'Xác nhận xóa nguồn tin?',
+                                  description:
+                                      'Bạn có chắc muốn xóa nguồn tin "${cat.label}" (${cat.source}) khỏi hệ thống không?',
+                                  confirmText: 'Xóa nguồn',
+                                  cancelText: 'Hủy bỏ',
                                 );
+                                if (confirmed == true && context.mounted) {
+                                  await controller.deleteCategory(cat.id);
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(Icons.check_circle_rounded,
+                                              color: Colors.white, size: 20),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text('Đã xóa nguồn tin "${cat.label}"'),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: Colors.red.shade700,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+                                }
                               },
                             ),
 
@@ -497,17 +489,33 @@ class AdminCategoriesTab extends StatelessWidget {
     final labelCtrl = TextEditingController();
     final sourceCtrl = TextEditingController(text: 'VnExpress');
     final urlCtrl = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: isDark ? const Color(0xFF141E33) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+        titlePadding: const EdgeInsets.fromLTRB(22, 22, 22, 10),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
         title: Row(
-          children: const [
-            Icon(Icons.add_circle_outline_rounded, color: Color(0xFF1E60F2)),
-            SizedBox(width: 8),
-            Text('Thêm nguồn tin mới',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E60F2).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.add_circle_rounded,
+                  color: Color(0xFF1E60F2), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Thêm nguồn tin mới',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              ),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -515,9 +523,12 @@ class AdminCategoriesTab extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Nhập thông tin chuyên mục và đường dẫn RSS để tự động lấy tin tức thời gian thực.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -528,7 +539,12 @@ class AdminCategoriesTab extends StatelessWidget {
                   prefixIcon: const Icon(Icons.label_outline_rounded,
                       color: Color(0xFF1E60F2), size: 20),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(14)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -540,7 +556,12 @@ class AdminCategoriesTab extends StatelessWidget {
                   prefixIcon: const Icon(Icons.business_rounded,
                       color: Color(0xFF1E60F2), size: 20),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(14)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -553,24 +574,37 @@ class AdminCategoriesTab extends StatelessWidget {
                   prefixIcon: const Icon(Icons.rss_feed_rounded,
                       color: Color(0xFF1E60F2), size: 20),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(14)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text('Hủy bỏ'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF1E60F2),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
             ),
+            icon: const Icon(Icons.check_rounded, size: 18),
+            label: const Text('Thêm nguồn'),
             onPressed: () async {
               final label = labelCtrl.text.trim();
               final source = sourceCtrl.text.trim();
@@ -618,9 +652,6 @@ class AdminCategoriesTab extends StatelessWidget {
                 ),
               );
             },
-            child: const Text('Thêm ngay',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

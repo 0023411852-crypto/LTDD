@@ -1,7 +1,7 @@
 name: daily_news_weather_portal
 description: "Đề tài 5: Ứng dụng đọc tin tức, thời tiết & tin tức tổng hợp - Daily News & Weather Portal"
 publish_to: 'none'
-version: 1.3.1+5
+version: 1.3.2+6
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

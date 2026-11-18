@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/widgets/app_confirmation_dialog.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -103,53 +104,31 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmationDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        title: const Row(
+      type: AppConfirmationType.danger,
+      icon: Icons.delete_forever_rounded,
+      title: 'Xóa tài khoản vĩnh viễn?',
+      description:
+          'Hành động này là vĩnh viễn và không thể khôi phục. Toàn bộ thông tin cá nhân và dữ liệu liên kết của bạn sẽ bị xóa hoàn toàn khỏi hệ thống.',
+      confirmText: 'Xác nhận xóa',
+      cancelText: 'Giữ tài khoản',
+      extraContent: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEF4444).withOpacity(0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.18)),
+        ),
+        child: Column(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Xóa tài khoản vĩnh viễn?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
+            _buildDeleteBullet('Toàn bộ Tên, Số điện thoại và Avatar sẽ bị xóa sạch.', isDark),
+            const SizedBox(height: 7),
+            _buildDeleteBullet('Hủy liên kết bài viết yêu thích và lịch sử đọc tin tức.', isDark),
+            const SizedBox(height: 7),
+            _buildDeleteBullet('Dọn dẹp sạch theo Nghị định 13/2023/NĐ-CP & Google Play.', isDark),
           ],
         ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Hành động này sẽ xóa vĩnh viễn tài khoản của bạn và không thể khôi phục.',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
-            SizedBox(height: 10),
-            Text(
-              '• Toàn bộ thông tin cá nhân (Tên, Số điện thoại, Avatar) sẽ bị xóa.\n'
-              '• Các bài viết yêu thích và lịch sử đọc tin sẽ bị hủy liên kết.\n'
-              '• Dữ liệu trên hệ thống sẽ được dọn dẹp sạch theo tiêu chuẩn bảo vệ dữ liệu người dùng (Nghị định 13/2023/NĐ-CP & Google Play Data Safety).',
-              style: TextStyle(fontSize: 13, height: 1.45, color: Colors.grey),
-            ),
-          ],
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy bỏ'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
-            icon: const Icon(Icons.delete_forever_rounded, size: 18),
-            label: const Text('Xóa tài khoản'),
-          ),
-        ],
       ),
     );
 
@@ -187,6 +166,29 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         );
       }
     }
+  }
+
+  Widget _buildDeleteBullet(String text, bool isDark) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 2),
+          child: Icon(Icons.remove_circle_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.4,
+              color: isDark ? Colors.white70 : const Color(0xFF334155),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override

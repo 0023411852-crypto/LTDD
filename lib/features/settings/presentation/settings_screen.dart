@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/widgets/app_confirmation_dialog.dart';
 import '../../../services/notification_permission_service.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
@@ -968,56 +969,62 @@ class SettingsScreen extends StatelessWidget {
   }
 
   // ── XÁC NHẬN DỌN DẸP BỘ NHỚ ĐỆM CACHE ─────────────────────────────────────
-  void _confirmClearCache(
+  Future<void> _confirmClearCache(
     BuildContext context,
     SettingsProvider settings,
     bool isVi,
     Color cardColor,
     Color textColor,
-  ) {
-    showDialog(
+  ) async {
+    final confirmed = await showAppConfirmationDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          isVi ? 'Dọn dẹp bộ nhớ đệm?' : 'Clear Cache Memory?',
-          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+      type: AppConfirmationType.success,
+      icon: Icons.cleaning_services_rounded,
+      title: isVi ? 'Dọn dẹp bộ nhớ đệm?' : 'Clear Cache Memory?',
+      description: isVi
+          ? 'Thao tác này sẽ xóa toàn bộ hình ảnh và tệp lưu tạm để giải phóng dung lượng bộ nhớ máy. Ứng dụng sẽ tự động tải lại khi cần.'
+          : 'This will purge all temporary cached images and files to free up storage space. The app will reload files when needed.',
+      confirmText: isVi ? 'Dọn dẹp ngay' : 'Clear Now',
+      cancelText: isVi ? 'Để sau' : 'Cancel',
+      extraContent: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
         ),
-        content: Text(
-          isVi
-              ? 'Thao tác này sẽ xóa toàn bộ hình ảnh và dữ liệu lưu tạm (${settings.cacheSizeFormatted}) để giải phóng dung lượng bộ nhớ máy. Ứng dụng sẽ tự động tải lại dữ liệu khi cần.'
-              : 'This will purge all temporary cached images and files (${settings.cacheSizeFormatted}) to free up storage space.',
-          style: TextStyle(fontSize: 13.5, color: textColor.withOpacity(0.85), height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(isVi ? 'Hủy' : 'Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            const Icon(Icons.storage_rounded, color: Color(0xFF10B981), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isVi
+                    ? 'Dung lượng giải phóng ước tính: ${settings.cacheSizeFormatted}'
+                    : 'Estimated storage freed: ${settings.cacheSizeFormatted}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xFF10B981),
+                ),
+              ),
             ),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final freed = await settings.clearCache();
-              if (context.mounted) {
-                _showToast(
-                  context,
-                  isVi
-                      ? 'Đã dọn dẹp ${freed.toStringAsFixed(1)} MB bộ nhớ đệm cache thành công!'
-                      : 'Cleared ${freed.toStringAsFixed(1)} MB cache successfully!',
-                );
-              }
-            },
-            child: Text(isVi ? 'Dọn dẹp ngay' : 'Clear Now'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+
+    if (confirmed == true && context.mounted) {
+      final freed = await settings.clearCache();
+      if (context.mounted) {
+        _showToast(
+          context,
+          isVi
+              ? 'Đã dọn dẹp ${freed.toStringAsFixed(1)} MB bộ nhớ đệm cache thành công!'
+              : 'Cleared ${freed.toStringAsFixed(1)} MB cache successfully!',
+        );
+      }
+    }
   }
 
   // ── DIALOG HIỂN THỊ CHÍNH SÁCH & BẢN QUYỀN (NGHỊ ĐỊNH 13 & GOOGLE PLAY COMPLIANCE) ───

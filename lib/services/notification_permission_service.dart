@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/widgets/app_confirmation_dialog.dart';
 
 /// Dịch vụ quản lý và yêu cầu quyền gửi thông báo (Android 13+ POST_NOTIFICATIONS & iOS)
 class NotificationPermissionService {
@@ -71,91 +72,49 @@ class NotificationPermissionService {
 
       final isDark = Theme.of(context).brightness == Brightness.dark;
 
-      final result = await showDialog<bool>(
+      final result = await showAppConfirmationDialog(
         context: context,
-        barrierDismissible: true,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.notifications_active_rounded,
-                  color: Color(0xFF0284C7),
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  isVi ? 'Bật thông báo ứng dụng' : 'Enable Notifications',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ),
-            ],
+        type: AppConfirmationType.notification,
+        icon: Icons.notifications_active_rounded,
+        title: isVi ? 'Bật thông báo ứng dụng' : 'Enable Notifications',
+        description: isVi
+            ? 'Cho phép ứng dụng gửi thông báo tức thời về các tin tức nóng hổi, cảnh báo bão lũ và bản tin thời tiết mỗi sáng.'
+            : 'Allow the app to send instant alerts on breaking news, severe weather warnings, and morning forecasts.',
+        confirmText: isVi ? 'Cho phép ngay' : 'Allow',
+        cancelText: isVi ? 'Để sau' : 'Later',
+        extraContent: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: (isDark ? Colors.white : Colors.black).withOpacity(0.07),
+            ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
             children: [
-              Text(
-                isVi
-                    ? 'Cho phép ứng dụng gửi thông báo tức thời về các tin tức nóng hổi, cảnh báo bão lũ và bản tin thời tiết mỗi sáng.'
-                    : 'Allow the app to send instant alerts on breaking news, severe weather warnings, and morning forecasts.',
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.45,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 14),
               _buildFeatureBullet(
                 icon: Icons.bolt_rounded,
-                color: Colors.amber.shade700,
+                color: const Color(0xFFF59E0B),
                 text: isVi ? 'Tin nóng & sự kiện khẩn cấp' : 'Breaking news & emergency alerts',
                 isDark: isDark,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 9),
               _buildFeatureBullet(
                 icon: Icons.wb_sunny_rounded,
-                color: Colors.orange,
+                color: const Color(0xFFEAB308),
                 text: isVi ? 'Dự báo thời tiết lúc 07:00 sáng' : 'Morning weather forecast at 7:00 AM',
                 isDark: isDark,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 9),
               _buildFeatureBullet(
                 icon: Icons.warning_amber_rounded,
-                color: Colors.redAccent,
+                color: const Color(0xFFEF4444),
                 text: isVi ? 'Cảnh báo bão, mưa lớn, chỉ số UV cao' : 'Storm, heavy rain & high UV warnings',
                 isDark: isDark,
               ),
             ],
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(
-                isVi ? 'Để sau' : 'Later',
-                style: TextStyle(color: isDark ? Colors.white54 : Colors.grey.shade600),
-              ),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              icon: const Icon(Icons.check_rounded, size: 18),
-              label: Text(isVi ? 'Cho phép' : 'Allow'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF0284C7),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
         ),
       );
 
@@ -178,15 +137,22 @@ class NotificationPermissionService {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: color),
+        Container(
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white70 : Colors.black87,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white.withOpacity(0.85) : Colors.black87,
             ),
           ),
         ),
@@ -196,52 +162,19 @@ class NotificationPermissionService {
 
   /// Hiển thị hộp thoại hướng dẫn người dùng mở Cài đặt thiết bị khi bị từ chối vĩnh viễn
   static Future<void> showSettingsDialog(BuildContext context, {bool isVi = true}) async {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    await showDialog(
+    final confirmed = await showAppConfirmationDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        title: Row(
-          children: [
-            const Icon(Icons.settings_suggest_rounded, color: Color(0xFF0284C7)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                isVi ? 'Cấp quyền trong Cài đặt' : 'Enable in App Settings',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          isVi
-              ? 'Quyền thông báo hiện đang bị tắt trong cài đặt thiết bị của bạn. Để nhận được thông báo tin tức và cảnh báo thời tiết, vui lòng mở Cài đặt và bật "Cho phép thông báo".'
-              : 'Notification permission is disabled in your device settings. Please open Settings and enable "Allow Notifications" to receive updates.',
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.4,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(isVi ? 'Để sau' : 'Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              openAppSettings();
-            },
-            icon: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: Text(isVi ? 'Mở Cài đặt' : 'Open Settings'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF0284C7),
-            ),
-          ),
-        ],
-      ),
+      type: AppConfirmationType.notification,
+      icon: Icons.settings_suggest_rounded,
+      title: isVi ? 'Cấp quyền trong Cài đặt' : 'Enable in App Settings',
+      description: isVi
+          ? 'Quyền thông báo hiện đang bị tắt trong cài đặt thiết bị của bạn. Để nhận được thông báo tin tức và cảnh báo thời tiết, vui lòng mở Cài đặt và bật "Cho phép thông báo".'
+          : 'Notification permission is disabled in your device settings. Please open Settings and enable "Allow Notifications" to receive updates.',
+      confirmText: isVi ? 'Mở Cài đặt' : 'Open Settings',
+      cancelText: isVi ? 'Để sau' : 'Cancel',
     );
+    if (confirmed == true) {
+      await openAppSettings();
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/widgets/app_confirmation_dialog.dart';
 import '../../admin/presentation/admin_panel_screen.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -222,50 +223,37 @@ class ProfileScreen extends StatelessWidget {
                     iconColor: const Color(0xFFEF4444),
                     textColor: const Color(0xFFEF4444),
                     showArrow: false,
-                    onTap: () {
-                      showDialog(
+                    onTap: () async {
+                      final confirmed = await showAppConfirmationDialog(
                         context: context,
-                        builder: (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          title: const Text(
-                            'Xác nhận đăng xuất',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          content: const Text(
-                            'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Hủy'),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFEF4444),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              onPressed: () async {
-                                Navigator.pop(ctx);
-                                await auth.signOut();
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Đã đăng xuất thành công'),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Đăng xuất',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
+                        type: AppConfirmationType.danger,
+                        icon: Icons.logout_rounded,
+                        title: 'Xác nhận đăng xuất',
+                        description:
+                            'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không? Các bài viết đã lưu vẫn được bảo lưu an toàn trên máy.',
+                        confirmText: 'Đăng xuất',
+                        cancelText: 'Ở lại',
                       );
+                      if (confirmed == true && context.mounted) {
+                        await auth.signOut();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded, color: Colors.white),
+                                SizedBox(width: 10),
+                                Text('Đã đăng xuất thành công'),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      }
                     },
                   )
                 else
@@ -315,33 +303,52 @@ class ProfileScreen extends StatelessWidget {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final cardBg = isDark ? const Color(0xFF141E33) : Colors.white;
+
             return AlertDialog(
-              title: const Text(
-                'Thông tin cá nhân',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              backgroundColor: cardBg,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+              titlePadding: const EdgeInsets.fromLTRB(22, 22, 22, 10),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.person_rounded, color: Color(0xFF2563EB), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Cập nhật tên hiển thị',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                    ),
+                  ),
+                ],
               ),
               content: Form(
                 key: formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.person_rounded,
-                        size: 34,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 6),
                     TextFormField(
                       controller: nameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Tên hiển thị',
-                        prefixIcon: Icon(Icons.badge_outlined),
+                      decoration: InputDecoration(
+                        labelText: 'Tên hiển thị *',
+                        prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF2563EB)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                          ),
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -354,19 +361,26 @@ class ProfileScreen extends StatelessWidget {
                     TextFormField(
                       initialValue: auth.email,
                       readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
+                      decoration: InputDecoration(
+                        labelText: 'Email đăng nhập',
+                        prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Mã tài khoản: ${auth.uid}',
+                        'Mã người dùng: ${auth.uid}',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -374,12 +388,22 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
               actions: [
-                TextButton(
+                OutlinedButton(
                   onPressed: saving ? null : () => Navigator.pop(dialogContext),
-                  child: const Text('Hủy'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('Hủy bỏ'),
                 ),
                 FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                   onPressed: saving
                       ? null
                       : () async {
@@ -392,8 +416,19 @@ class ProfileScreen extends StatelessWidget {
                           if (success) {
                             Navigator.pop(dialogContext);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Đã cập nhật thông tin cá nhân.'),
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded, color: Colors.white),
+                                    SizedBox(width: 8),
+                                    Text('Đã cập nhật thông tin cá nhân.'),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF10B981),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             );
                           } else {
@@ -405,6 +440,8 @@ class ProfileScreen extends StatelessWidget {
                                       ? auth.errorMessage
                                       : 'Không thể cập nhật thông tin.',
                                 ),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
                               ),
                             );
                           }
@@ -413,7 +450,10 @@ class ProfileScreen extends StatelessWidget {
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text('Lưu thay đổi'),
                 ),
