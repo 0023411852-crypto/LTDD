@@ -244,9 +244,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Lấy top 5 bài tin nổi bật cho Slider
     final List<Article> featuredArticles =
         articles.take(math.min(5, articles.length)).toList();
-    // Các bài còn lại hiển thị ở phần tin mới nhất
+    // Danh sách dòng sự kiện phong phú (không bỏ sót tin tức)
     final List<Article> latestArticles =
-        articles.length > 5 ? articles.skip(5).toList() : articles;
+        articles.length > 5 ? articles.skip(2).toList() : articles;
 
     final userName = context.select<AuthProvider, String>(
       (auth) => auth.isAuthenticated ? auth.displayName.split(' ').last : '',
@@ -378,19 +378,95 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // 6. MỤC "MỚI CẬP NHẬT" - EDITORIAL MAGAZINE FEED
+                      // 5.1 MỤC "XU HƯỚNG ĐỌC NHIỀU" - HORIZONTAL TRENDING STRIP
+                      if (featuredArticles.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.local_fire_department_rounded,
+                                color: Color(0xFFEF4444),
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Xu hướng đọc nhiều',
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                color: textColor,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                '🔥 TOP TRENDING',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFEF4444),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTrendingHorizontalList(
+                          context: context,
+                          articles: featuredArticles,
+                          cardBg: cardBg,
+                          borderColor: borderColor,
+                          textColor: textColor,
+                          subTextColor: subTextColor,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // 6. MỤC "DÒNG SỰ KIỆN NỔI BẬT" - EDITORIAL MAGAZINE FEED
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            'Mới cập nhật',
-                            style: TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              color: textColor,
-                              letterSpacing: -0.4,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2563EB).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.bolt_rounded,
+                                  color: Color(0xFF2563EB),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Dòng tin mới nhất',
+                                style: TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  color: textColor,
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                            ],
                           ),
                           Padding(
                             padding: const EdgeInsets.only(bottom: 2),
@@ -460,8 +536,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: latestArticles.length,
                     itemBuilder: (context, index) {
                       final article = latestArticles[index];
-                      // Cứ mỗi 4 bài thì hiển thị 1 thẻ đặc sắc khổ lớn (Full-width card)
-                      final isFeatureLayout = index > 0 && index % 4 == 0;
+                      // Cứ mỗi 3 bài thì hiển thị 1 thẻ đặc sắc khổ lớn (Full-width card)
+                      final isFeatureLayout = index > 0 && index % 3 == 0;
 
                       if (isFeatureLayout) {
                         return _buildWideMagazineCard(
@@ -481,8 +557,33 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderColor: borderColor,
                         textColor: textColor,
                         subTextColor: subTextColor,
+                        badgeText: index == 0 ? '🔥 NỔI BẬT' : (index == 1 ? '⚡ MỚI' : null),
                       );
                     },
+                  ),
+                ),
+
+              // Nút "Tải thêm tin tức" khi danh sách còn bài viết
+              if (newsProvider.hasMore)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 20),
+                    child: Center(
+                      child: OutlinedButton.icon(
+                        onPressed: () => newsProvider.loadMore(),
+                        icon: const Icon(Icons.expand_more_rounded, size: 20),
+                        label: const Text(
+                          'Tải thêm tin tức nổi bật',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF2563EB),
+                          side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+                          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               const SliverToBoxAdapter(child: SizedBox(height: 36)),
@@ -1137,6 +1238,204 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- 4.1. DANH SÁCH CUỘN NGANG XU HƯỚNG ĐỌC NHIỀU (TRENDING HOT LIST) ---
+  Widget _buildTrendingHorizontalList({
+    required BuildContext context,
+    required List<Article> articles,
+    required Color cardBg,
+    required Color borderColor,
+    required Color textColor,
+    required Color subTextColor,
+    required bool isDark,
+  }) {
+    final trendingList = articles.take(5).toList();
+    final rankGradients = [
+      [const Color(0xFFEF4444), const Color(0xFFF97316)], // #1 Đỏ cam
+      [const Color(0xFFF59E0B), const Color(0xFFFBBF24)], // #2 Vàng hổ phách
+      [const Color(0xFF2563EB), const Color(0xFF38BDF8)], // #3 Xanh lam
+      [const Color(0xFF8B5CF6), const Color(0xFFA855F7)], // #4 Tím
+      [const Color(0xFF10B981), const Color(0xFF34D399)], // #5 Xanh lục
+    ];
+
+    return SizedBox(
+      height: 228,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: trendingList.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final article = trendingList[index];
+          final gradientColors = rankGradients[index % rankGradients.length];
+
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ArticleDetailScreen(article: article),
+                ),
+              );
+            },
+            child: Container(
+              width: 215,
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: borderColor, width: 1.1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Ảnh thumbnail kèm huy hiệu Rank #1..#5 và nhãn HOT
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                    child: Stack(
+                      children: [
+                        SizedBox(
+                          height: 112,
+                          width: double.infinity,
+                          child: article.imageUrl != null
+                              ? CachedNetworkImage(
+                                  imageUrl: article.imageUrl!,
+                                  memCacheWidth: 430,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) =>
+                                      _buildImagePlaceholder(article.source),
+                                  errorWidget: (_, __, ___) =>
+                                      _buildImagePlaceholder(article.source),
+                                )
+                              : _buildImagePlaceholder(article.source),
+                        ),
+                        // Badge Rank #1, #2...
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: gradientColors,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              '#${index + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Badge HOT
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.65),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.whatshot_rounded, color: Color(0xFFF97316), size: 12),
+                                SizedBox(width: 2),
+                                Text(
+                                  'HOT',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Phần thông tin phía dưới
+                  Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                article.source,
+                                style: const TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _getTimeAgo(article.publishedAt),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: subTextColor,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          article.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: textColor,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // --- 5. THẺ BÁO TIÊU CHUẨN (STANDARD NEWS CARD) ---
   Widget _buildStandardNewsCard({
     required BuildContext context,
@@ -1145,6 +1444,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color borderColor,
     required Color textColor,
     required Color subTextColor,
+    String? badgeText,
   }) {
     return InkWell(
       key: ValueKey(article.link),
@@ -1202,9 +1502,32 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nguồn báo & Tag chuyên mục
+                  // Nguồn báo, Tag nổi bật & Thời gian
                   Row(
                     children: [
+                      if (badgeText != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFEF4444).withOpacity(0.3),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),

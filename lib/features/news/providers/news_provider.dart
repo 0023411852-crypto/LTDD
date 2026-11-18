@@ -28,7 +28,7 @@ class NewsProvider extends ChangeNotifier {
   Set<String> _pendingArticleTitles = {};
   Set<String> _deletedArticleTitles = {};
 
-  final int _pageSize = 10;
+  final int _pageSize = 30;
   int _currentPage = 1;
 
   NewsStatus get status => _status;

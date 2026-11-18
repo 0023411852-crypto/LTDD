@@ -61,12 +61,13 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isAdmin {
     if (_isCustomAdminLoggedIn) return true;
-    if (_user == null) return false;
-    final userEmail = _user!.email?.toLowerCase() ?? '';
-    return userEmail.contains('admin') ||
-        userEmail == 'linh@admin.com' ||
-        userEmail == 'admin@gmail.com' ||
-        userEmail.endsWith('@admin.portal');
+    final email = (_user?.email ?? _customUserEmail ?? '').toLowerCase();
+    if (email.isEmpty) return false;
+    return email.contains('admin') ||
+        email == 'admin@portal.com' ||
+        email == 'admin@gmail.com' ||
+        email == 'linh@admin.com' ||
+        email.endsWith('@admin.portal');
   }
 
   StreamSubscription<User?>? _authStateSubscription;
@@ -164,14 +165,16 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> signInAsAdmin() async {
+  Future<bool> signInAsAdmin({String? email, String? name}) async {
     _status = AuthStatus.authenticating;
     _errorMessage = '';
     notifyListeners();
 
     try {
-      _customUserEmail = 'admin@gmail.com';
-      _customUserName = 'Quản trị viên Hệ thống';
+      final adminEmail = email ?? 'admin@portal.com';
+      final adminName = name ?? 'Quản trị viên Hệ thống';
+      _customUserEmail = adminEmail;
+      _customUserName = adminName;
       _customUserUid = 'admin_root_sys';
       _customUserPhone = '0987654321';
       _isCustomAdminLoggedIn = true;
@@ -179,8 +182,8 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = '';
 
       await _saveActiveSession(
-        'admin@gmail.com',
-        'Quản trị viên Hệ thống',
+        adminEmail,
+        adminName,
         'admin_root_sys',
         isAdmin: true,
       );
@@ -198,9 +201,34 @@ class AuthProvider extends ChangeNotifier {
     final normalizedEmail = email.trim().toLowerCase();
     final normalizedPassword = password.trim();
 
-    // 1. Tài khoản admin hệ thống mặc định
-    if (normalizedEmail == 'admin@gmail.com' && normalizedPassword == 'Admin@123456') {
-      return signInAsAdmin();
+    // 1. Tài khoản admin hệ thống phân quyền cao nhất
+    if ((normalizedEmail == 'admin@portal.com' || normalizedEmail == 'admin@gmail.com') &&
+        (normalizedPassword == 'admin123' ||
+            normalizedPassword == 'Admin@123' ||
+            normalizedPassword == 'Admin@123456')) {
+      return signInAsAdmin(email: normalizedEmail, name: 'Quản trị viên Hệ thống');
+    }
+
+    // 2. Tài khoản người dùng mẫu phân quyền thông thường (User role)
+    if ((normalizedEmail == 'user@portal.com' || normalizedEmail == 'user@gmail.com') &&
+        (normalizedPassword == 'user123' ||
+            normalizedPassword == 'User@123' ||
+            normalizedPassword == 'User@123456')) {
+      _customUserEmail = normalizedEmail;
+      _customUserName = 'Người Dùng Portal';
+      _customUserUid = 'usr_portal_demo';
+      _customUserPhone = '0912345678';
+      _isCustomAdminLoggedIn = false;
+      _status = AuthStatus.authenticated;
+      _errorMessage = '';
+      await _saveActiveSession(
+        normalizedEmail,
+        'Người Dùng Portal',
+        'usr_portal_demo',
+        isAdmin: false,
+      );
+      notifyListeners();
+      return true;
     }
 
     _status = AuthStatus.authenticating;

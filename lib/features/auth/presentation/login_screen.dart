@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../navigation/presentation/main_nav_screen.dart';
+import '../../navigation/providers/navigation_provider.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -137,25 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _loginQuickAdmin() async {
-    setState(() => _loading = true);
-    final auth = context.read<AuthProvider>();
-    final success = await auth.signInAsAdmin();
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (success) {
-      _navigateAfterAuth('Đăng nhập Quản trị viên (Admin) thành công!');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.errorMessage.isNotEmpty
-              ? auth.errorMessage
-              : 'Không thể đăng nhập tài khoản Admin.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   void _forgotPassword() {
     final resetEmailController =
@@ -238,14 +220,14 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.green,
       ),
     );
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context, true);
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainNavScreen()),
-      );
-    }
+    try {
+      context.read<NavigationProvider>().toHome();
+    } catch (_) {}
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const MainNavScreen()),
+      (route) => false,
+    );
   }
 
   void _skipToHome() {
@@ -718,27 +700,134 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                       if (!_isRegister) ...[
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: _loading ? null : _loginQuickAdmin,
-                          icon: const Icon(Icons.admin_panel_settings_rounded,
-                              color: Color(0xFF0D9488), size: 20),
-                          label: const Text(
-                            '⚡ Đăng nhập nhanh với tài khoản Admin',
-                            style: TextStyle(
-                              color: Color(0xFF0D9488),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: chipBg.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white12
+                                  : const Color(0xFF1E60F2).withOpacity(0.15),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                                color: Color(0xFF0D9488), width: 1.2),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24)),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 12, horizontal: 16),
-                            backgroundColor: chipBg.withOpacity(0.85),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.shield_outlined,
+                                      size: 15, color: Color(0xFF1E60F2)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Chọn tài khoản mẫu để đăng nhập:',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF082875),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: () {
+                                        _emailController.text = 'admin@portal.com';
+                                        _passwordController.text = 'admin123';
+                                        setState(() {});
+                                      },
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 7, horizontal: 8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF0D9488)
+                                              .withOpacity(0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: const Color(0xFF0D9488)
+                                                .withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: const [
+                                            Text(
+                                              '🔑 Quyền Admin',
+                                              style: TextStyle(
+                                                color: Color(0xFF0D9488),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                            SizedBox(height: 2),
+                                            Text(
+                                              'admin@portal.com',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Color(0xFF0D9488),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: () {
+                                        _emailController.text = 'user@portal.com';
+                                        _passwordController.text = 'user123';
+                                        setState(() {});
+                                      },
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 7, horizontal: 8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF2563EB)
+                                              .withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: const Color(0xFF2563EB)
+                                                .withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: const [
+                                            Text(
+                                              '👤 Quyền Người dùng',
+                                              style: TextStyle(
+                                                color: Color(0xFF2563EB),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                            SizedBox(height: 2),
+                                            Text(
+                                              'user@portal.com',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Color(0xFF2563EB),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
