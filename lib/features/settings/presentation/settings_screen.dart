@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../services/notification_permission_service.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 
@@ -195,6 +196,39 @@ class SettingsScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
+                _buildActionRow(
+                  icon: Icons.app_settings_alt_rounded,
+                  iconBg: const Color(0xFF10B981).withOpacity(0.14),
+                  iconColor: const Color(0xFF10B981),
+                  title: isVi ? 'Quyền thông báo hệ thống' : 'System Notification Permission',
+                  subtitle: isVi
+                      ? 'Kiểm tra & quản lý quyền trên thiết bị'
+                      : 'Check & manage permissions on device',
+                  textColor: textColor,
+                  subTextColor: subTextColor,
+                  onTap: () async {
+                    final granted = await NotificationPermissionService.isGranted();
+                    if (!context.mounted) return;
+                    if (granted) {
+                      _showToast(
+                        context,
+                        isVi
+                            ? '✓ Ứng dụng đã được cấp quyền thông báo hệ thống'
+                            : '✓ System notification permission is granted',
+                      );
+                    } else {
+                      final ok = await NotificationPermissionService.requestAndCheck(context, isVi: isVi);
+                      if (!context.mounted) return;
+                      if (ok) {
+                        _showToast(
+                          context,
+                          isVi ? 'Đã cấp quyền thông báo thành công!' : 'Permission granted successfully!',
+                        );
+                      }
+                    }
+                  },
+                ),
+                Divider(color: borderColor),
                 _buildSwitchRow(
                   icon: Icons.newspaper_rounded,
                   iconBg: const Color(0xFFEF4444).withOpacity(0.14),
@@ -206,14 +240,20 @@ class SettingsScreen extends StatelessWidget {
                   value: settings.breakingNewsNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) {
+                  onChanged: (val) async {
+                    if (val) {
+                      final ok = await NotificationPermissionService.requestAndCheck(context, isVi: isVi);
+                      if (!ok) return;
+                    }
                     settings.setBreakingNewsNotif(val);
-                    _showToast(
-                      context,
-                      val
-                          ? (isVi ? 'Đã bật thông báo tin nóng' : 'Breaking news enabled')
-                          : (isVi ? 'Đã tắt thông báo tin nóng' : 'Breaking news disabled'),
-                    );
+                    if (context.mounted) {
+                      _showToast(
+                        context,
+                        val
+                            ? (isVi ? 'Đã bật thông báo tin nóng' : 'Breaking news enabled')
+                            : (isVi ? 'Đã tắt thông báo tin nóng' : 'Breaking news disabled'),
+                      );
+                    }
                   },
                 ),
                 Divider(color: borderColor),
@@ -228,14 +268,20 @@ class SettingsScreen extends StatelessWidget {
                   value: settings.weatherNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) {
+                  onChanged: (val) async {
+                    if (val) {
+                      final ok = await NotificationPermissionService.requestAndCheck(context, isVi: isVi);
+                      if (!ok) return;
+                    }
                     settings.setWeatherNotif(val);
-                    _showToast(
-                      context,
-                      val
-                          ? (isVi ? 'Đã bật dự báo thời tiết sáng' : 'Morning weather forecast enabled')
-                          : (isVi ? 'Đã tắt dự báo thời tiết sáng' : 'Morning weather forecast disabled'),
-                    );
+                    if (context.mounted) {
+                      _showToast(
+                        context,
+                        val
+                            ? (isVi ? 'Đã bật dự báo thời tiết sáng' : 'Morning weather forecast enabled')
+                            : (isVi ? 'Đã tắt dự báo thời tiết sáng' : 'Morning weather forecast disabled'),
+                      );
+                    }
                   },
                 ),
                 Divider(color: borderColor),
@@ -250,14 +296,20 @@ class SettingsScreen extends StatelessWidget {
                   value: settings.weatherAlertNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) {
+                  onChanged: (val) async {
+                    if (val) {
+                      final ok = await NotificationPermissionService.requestAndCheck(context, isVi: isVi);
+                      if (!ok) return;
+                    }
                     settings.setWeatherAlertNotif(val);
-                    _showToast(
-                      context,
-                      val
-                          ? (isVi ? 'Đã bật cảnh báo thời tiết nguy hiểm' : 'Severe weather alerts enabled')
-                          : (isVi ? 'Đã tắt cảnh báo thời tiết nguy hiểm' : 'Severe weather alerts disabled'),
-                    );
+                    if (context.mounted) {
+                      _showToast(
+                        context,
+                        val
+                            ? (isVi ? 'Đã bật cảnh báo thời tiết nguy hiểm' : 'Severe weather alerts enabled')
+                            : (isVi ? 'Đã tắt cảnh báo thời tiết nguy hiểm' : 'Severe weather alerts disabled'),
+                      );
+                    }
                   },
                 ),
                 Divider(color: borderColor),
@@ -272,14 +324,20 @@ class SettingsScreen extends StatelessWidget {
                   value: settings.promoNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) {
+                  onChanged: (val) async {
+                    if (val) {
+                      final ok = await NotificationPermissionService.requestAndCheck(context, isVi: isVi);
+                      if (!ok) return;
+                    }
                     settings.setPromoNotif(val);
-                    _showToast(
-                      context,
-                      val
-                          ? (isVi ? 'Đã bật thông báo tiện ích' : 'Promotions enabled')
-                          : (isVi ? 'Đã tắt thông báo tiện ích' : 'Promotions disabled'),
-                    );
+                    if (context.mounted) {
+                      _showToast(
+                        context,
+                        val
+                            ? (isVi ? 'Đã bật thông báo tiện ích' : 'Promotions enabled')
+                            : (isVi ? 'Đã tắt thông báo tiện ích' : 'Promotions disabled'),
+                      );
+                    }
                   },
                 ),
               ],

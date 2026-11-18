@@ -2,9 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../services/notification_permission_service.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../news/presentation/news_list_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../../weather/presentation/weather_screen.dart';
 import '../providers/navigation_provider.dart';
 
@@ -30,6 +32,16 @@ class _MainNavScreenState extends State<MainNavScreen> {
       const WeatherScreen(),
       const ProfileScreen(),
     ];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final settings = context.read<SettingsProvider>();
+        NotificationPermissionService.promptOnFirstLaunch(
+          context,
+          isVi: settings.isVietnamese,
+        );
+      }
+    });
   }
 
   @override
