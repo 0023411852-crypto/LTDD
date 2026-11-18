@@ -9,10 +9,29 @@ class NewsCategory {
   final String rssUrl;
   final String source;
   const NewsCategory(this.id, this.label, this.rssUrl, this.source);
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'label': label,
+        'rssUrl': rssUrl,
+        'source': source,
+      };
+
+  factory NewsCategory.fromJson(Map<String, dynamic> json) => NewsCategory(
+        json['id'] as String? ?? '',
+        json['label'] as String? ?? '',
+        json['rssUrl'] as String? ?? '',
+        json['source'] as String? ?? '',
+      );
 }
 
-/// Nguồn tin: RSS chính thức của các báo Việt Nam - miễn phí, không cần API key
-class NewsService {
+/// Abstract contract for Clean Architecture / Dependency Inversion
+abstract class INewsService {
+  Future<List<Article>> fetchCategory(NewsCategory category, {bool forceRefresh = false});
+}
+
+/// News Service: RSS aggregator with in-memory TTL cache and resilience
+class NewsService implements INewsService {
   static const categories = <NewsCategory>[
     NewsCategory('moi-nhat', 'Mới nhất',
         'https://vnexpress.net/rss/tin-moi-nhat.rss', 'VnExpress'),
@@ -36,54 +55,96 @@ class NewsService {
         'https://thanhnien.vn/rss/home.rss', 'Thanh Niên'),
   ];
 
-  Future<List<Article>> fetchCategory(NewsCategory category) async {
-    final res = await http
-        .get(Uri.parse(category.rssUrl))
-        .timeout(const Duration(seconds: 15));
-    if (res.statusCode != 200) {
-      throw Exception('Không tải được tin (${res.statusCode})');
+  static const Duration _cacheTtl = Duration(minutes: 5);
+  static const Duration _requestTimeout = Duration(seconds: 15);
+
+  final Map<String, (DateTime timestamp, List<Article> data)> _cache = {};
+
+  @override
+  Future<List<Article>> fetchCategory(NewsCategory category, {bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    final cached = _cache[category.id];
+
+    if (!forceRefresh && cached != null && now.difference(cached.$1) < _cacheTtl) {
+      return cached.$2;
     }
-    final doc = XmlDocument.parse(res.body);
-    final items = doc.findAllElements('item');
-    return items
-        .map((item) {
-          DateTime? pub;
-          final pubStr = item.getElement('pubDate')?.innerText;
-          if (pubStr != null) {
-            try {
-              pub = HttpDateParser.parse(pubStr);
-            } catch (_) {}
-          }
-          return Article.fromRssItem(
-            title: item.getElement('title')?.innerText ?? '',
-            link: item.getElement('link')?.innerText ?? '',
-            description: item.getElement('description')?.innerText ?? '',
-            source: category.source,
-            publishedAt: pub,
-            category: category.label,
-          );
-        })
-        .where((a) => a.title.isNotEmpty && a.link.isNotEmpty)
-        .toList();
+
+    // Security check (Semgrep): Enforce valid HTTPS URI
+    final uri = Uri.tryParse(category.rssUrl);
+    if (uri == null || !uri.hasScheme || uri.scheme != 'https') {
+      throw const FormatException('URL nguồn tin không an toàn hoặc không hợp lệ.');
+    }
+
+    try {
+      final res = await http.get(uri).timeout(_requestTimeout);
+      if (res.statusCode != 200) {
+        throw Exception('Không tải được tin (${res.statusCode})');
+      }
+
+      final doc = XmlDocument.parse(res.body);
+      final items = doc.findAllElements('item');
+      final articles = items
+          .map((item) => _parseRssItem(item, category))
+          .where((a) => a.title.isNotEmpty && a.link.isNotEmpty)
+          .toList();
+
+      _cache[category.id] = (now, articles);
+      return articles;
+    } catch (e) {
+      // Circuit-breaker / Graceful Degradation: return stale cache if available on network failure
+      if (cached != null && cached.$2.isNotEmpty) {
+        return cached.$2;
+      }
+      rethrow;
+    }
   }
 
-}
-
-/// Parser cho pubDate dạng RFC822 của RSS, ví dụ: Sat, 14 Nov 2026 07:30:00 +0700
-class HttpDateParser {
-  static DateTime parse(String input) {
-    final cleaned = input.trim().replaceAll(' GMT', ' +0000');
-    for (final pattern in [
-      'EEE, dd MMM yyyy HH:mm:ss Z',
-      'EEE, dd MMM yyyy HH:mm:ss zzz',
-      'dd MMM yyyy HH:mm:ss Z',
-    ]) {
+  Article _parseRssItem(XmlElement item, NewsCategory category) {
+    DateTime? pub;
+    final pubStr = item.getElement('pubDate')?.innerText;
+    if (pubStr != null && pubStr.trim().isNotEmpty) {
       try {
-        return DateFormat(pattern, 'en_US').parse(cleaned);
+        pub = HttpDateParser.parse(pubStr);
       } catch (_) {}
     }
+
+    return Article.fromRssItem(
+      title: item.getElement('title')?.innerText ?? '',
+      link: item.getElement('link')?.innerText ?? '',
+      description: item.getElement('description')?.innerText ?? '',
+      source: category.source,
+      publishedAt: pub,
+      category: category.label,
+    );
+  }
+
+  void clearCache() {
+    _cache.clear();
+  }
+}
+
+/// Parser cho pubDate dạng RFC822 của RSS - Refactored for low cognitive complexity
+class HttpDateParser {
+  static const List<String> _datePatterns = [
+    'EEE, dd MMM yyyy HH:mm:ss Z',
+    'EEE, dd MMM yyyy HH:mm:ss zzz',
+    'dd MMM yyyy HH:mm:ss Z',
+  ];
+
+  static DateTime parse(String input) {
+    final cleaned = input.trim().replaceAll(' GMT', ' +0000');
+
+    for (final pattern in _datePatterns) {
+      try {
+        return DateFormat(pattern, 'en_US').parse(cleaned);
+      } catch (_) {
+        // Try next pattern
+      }
+    }
+
     final parsed = DateTime.tryParse(cleaned);
     if (parsed != null) return parsed;
+
     throw FormatException('Không parse được ngày RSS: $input');
   }
 }

@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../models/article.dart';
 import '../../favorites/providers/favorites_provider.dart';
+import '../../settings/providers/settings_provider.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
@@ -21,14 +23,29 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   void initState() {
     super.initState();
+    final linkUri = Uri.tryParse(widget.article.link.trim());
     _webController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) {
           if (mounted) setState(() => _webLoading = false);
         },
-      ))
-      ..loadRequest(Uri.parse(widget.article.link));
+        onNavigationRequest: (request) {
+          final reqUri = Uri.tryParse(request.url);
+          if (reqUri != null &&
+              (reqUri.scheme == 'http' || reqUri.scheme == 'https')) {
+            return NavigationDecision.navigate;
+          }
+          return NavigationDecision.prevent;
+        },
+      ));
+
+    if (linkUri != null &&
+        (linkUri.scheme == 'http' || linkUri.scheme == 'https')) {
+      _webController?.loadRequest(linkUri);
+    } else {
+      _webLoading = false;
+    }
   }
 
   Future<void> _openOriginalArticle() async {
@@ -61,6 +78,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final favoritesProvider = context.watch<FavoritesProvider>();
+    final settingsProvider = context.watch<SettingsProvider>();
+    final fontScale = settingsProvider.fontScale;
     final isFav = favoritesProvider.isFavorite(widget.article);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -69,6 +88,28 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       appBar: AppBar(
         title: Text(widget.article.source),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.format_size_rounded),
+            tooltip: 'Đổi cỡ chữ',
+            onPressed: () {
+              // Cycle through font sizes: Nhỏ -> Tiêu chuẩn -> Lớn -> Rất lớn
+              final current = settingsProvider.fontSize;
+              final next = current == 'Nhỏ'
+                  ? 'Tiêu chuẩn'
+                  : current == 'Tiêu chuẩn'
+                      ? 'Lớn'
+                      : current == 'Lớn'
+                          ? 'Rất lớn'
+                          : 'Nhỏ';
+              settingsProvider.setFontSize(next);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Cỡ chữ đọc bài: $next'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(
               isFav ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
@@ -118,12 +159,20 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: widget.article.imageUrl != null
-                        ? Image.network(
-                            widget.article.imageUrl!,
+                        ? CachedNetworkImage(
+                            imageUrl: widget.article.imageUrl!,
                             width: double.infinity,
                             height: 220,
+                            memCacheWidth: 900,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            placeholder: (_, __) => Container(
+                              height: 180,
+                              color: cs.surfaceContainerHighest,
+                              child: const Center(
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
                               height: 180,
                               color: cs.surfaceContainerHighest,
                               child: Center(
@@ -146,19 +195,22 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   // 2. Nguồn & Thời gian
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Nguồn: ${widget.article.source}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: cs.primary,
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Nguồn: ${widget.article.source}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: cs.primary,
+                            ),
                           ),
                         ),
                       ),
@@ -196,6 +248,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   Text(
                     widget.article.title,
                     style: tt.headlineSmall?.copyWith(
+                      fontSize: (tt.headlineSmall?.fontSize ?? 24) * fontScale,
                       fontWeight: FontWeight.w800,
                       height: 1.35,
                     ),
@@ -228,6 +281,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         ? widget.article.description
                         : 'Nội dung tóm tắt đang được cập nhật từ ${widget.article.source}. Bạn có thể bấm nút bên dưới để đọc bài viết gốc đầy đủ.',
                     style: tt.bodyLarge?.copyWith(
+                      fontSize: (tt.bodyLarge?.fontSize ?? 16) * fontScale,
                       height: 1.6,
                       color: cs.onSurface,
                     ),
@@ -239,11 +293,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: Image.network(
-                            imageUrl,
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            memCacheWidth: 800,
+                            placeholder: (_, __) => const SizedBox(
+                              height: 120,
+                              child: Center(
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) =>
                                 const SizedBox.shrink(),
                           ),
                         ),

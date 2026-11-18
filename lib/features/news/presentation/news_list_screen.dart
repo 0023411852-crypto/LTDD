@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/article.dart';
@@ -28,7 +29,6 @@ class NewsListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final newsProvider = context.watch<NewsProvider>();
-    final favoritesProvider = context.watch<FavoritesProvider>();
     final articles = newsProvider.articles;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -76,27 +76,30 @@ class NewsListScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Bản Tin 24/7',
-                            style: TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              color: textColor,
-                              letterSpacing: -0.4,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tin tức thời sự',
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                color: textColor,
+                                letterSpacing: -0.4,
+                              ),
                             ),
-                          ),
-                          Text(
-                            'Tổng hợp từ các nguồn báo chính thống',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: subTextColor,
+                            Text(
+                              'Tổng hợp từ các nguồn báo chí chính thống',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: subTextColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -140,21 +143,10 @@ class NewsListScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2563EB).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'Tìm kiếm',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ),
+                          Icon(
+                            Icons.tune_rounded,
+                            color: subTextColor.withOpacity(0.7),
+                            size: 19,
                           ),
                         ],
                       ),
@@ -189,16 +181,10 @@ class NewsListScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          gradient: isSelected
-                              ? const LinearGradient(
-                                  colors: [
-                                    Color(0xFF2563EB),
-                                    Color(0xFF38BDF8)
-                                  ],
-                                )
-                              : null,
                           color: isSelected
-                              ? null
+                              ? (isDark
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFF1D4ED8))
                               : cardBg,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
@@ -209,10 +195,10 @@ class NewsListScreen extends StatelessWidget {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: const Color(0xFF2563EB)
-                                        .withOpacity(0.35),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    color: const Color(0xFF1D4ED8)
+                                        .withOpacity(0.22),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ]
                               : null,
@@ -246,7 +232,6 @@ class NewsListScreen extends StatelessWidget {
                   context,
                   newsProvider,
                   articles,
-                  favoritesProvider,
                   cardBg,
                   borderColor,
                   textColor,
@@ -264,7 +249,6 @@ class NewsListScreen extends StatelessWidget {
     BuildContext context,
     NewsProvider provider,
     List<Article> articles,
-    FavoritesProvider favoritesProvider,
     Color cardBg,
     Color borderColor,
     Color textColor,
@@ -334,20 +318,18 @@ class NewsListScreen extends StatelessWidget {
           }
 
           final article = articles[index];
-          final isFav = favoritesProvider.isFavorite(article);
 
           // Bài viết đầu tiên: Thẻ Featured Card khổ lớn
           if (index == 0) {
             return _buildFeaturedArticleCard(
               context: context,
               article: article,
-              isFav: isFav,
-              favoritesProvider: favoritesProvider,
             );
           }
 
           // Các bài tiếp theo: Thẻ tin tức Magazine Card chuẩn
           return InkWell(
+            key: ValueKey(article.link),
             onTap: () {
               Navigator.push(
                 context,
@@ -381,12 +363,14 @@ class NewsListScreen extends StatelessWidget {
                       width: 110,
                       height: 84,
                       child: article.imageUrl != null
-                          ? Image.network(
-                              article.imageUrl!,
-                              cacheWidth: 330,
-                              cacheHeight: 252,
+                          ? CachedNetworkImage(
+                              imageUrl: article.imageUrl!,
+                              memCacheWidth: 330,
+                              memCacheHeight: 252,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
+                              placeholder: (_, __) =>
+                                  _buildImagePlaceholder(article.source),
+                              errorWidget: (_, __, ___) =>
                                   _buildImagePlaceholder(article.source),
                             )
                           : _buildImagePlaceholder(article.source),
@@ -429,25 +413,31 @@ class NewsListScreen extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            InkWell(
-                              onTap: () =>
-                                  favoritesProvider.toggleFavorite(article),
-                              borderRadius: BorderRadius.circular(20),
-                              child: SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: Center(
-                                  child: Icon(
-                                    isFav
-                                        ? Icons.favorite_rounded
-                                        : Icons.favorite_border_rounded,
-                                    color: isFav
-                                        ? const Color(0xFFEF4444)
-                                        : subTextColor.withOpacity(0.7),
-                                    size: 20,
+                            Selector<FavoritesProvider, bool>(
+                              selector: (_, fav) => fav.isFavorite(article),
+                              builder: (context, isFav, _) {
+                                return InkWell(
+                                  onTap: () => context
+                                      .read<FavoritesProvider>()
+                                      .toggleFavorite(article),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: SizedBox(
+                                    width: 36,
+                                    height: 36,
+                                    child: Center(
+                                      child: Icon(
+                                        isFav
+                                            ? Icons.favorite_rounded
+                                            : Icons.favorite_border_rounded,
+                                        color: isFav
+                                            ? const Color(0xFFEF4444)
+                                            : subTextColor.withOpacity(0.7),
+                                        size: 20,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -480,10 +470,9 @@ class NewsListScreen extends StatelessWidget {
   Widget _buildFeaturedArticleCard({
     required BuildContext context,
     required Article article,
-    required bool isFav,
-    required FavoritesProvider favoritesProvider,
   }) {
     return InkWell(
+      key: ValueKey('featured_${article.link}'),
       onTap: () {
         Navigator.push(
           context,
@@ -512,11 +501,13 @@ class NewsListScreen extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               if (article.imageUrl != null)
-                Image.network(
-                  article.imageUrl!,
-                  cacheWidth: 800,
+                CachedNetworkImage(
+                  imageUrl: article.imageUrl!,
+                  memCacheWidth: 800,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
+                  placeholder: (_, __) =>
+                      _buildImagePlaceholder(article.source),
+                  errorWidget: (_, __, ___) =>
                       _buildImagePlaceholder(article.source),
                 )
               else
@@ -581,29 +572,34 @@ class NewsListScreen extends StatelessWidget {
               Positioned(
                 top: 10,
                 right: 10,
-                child: InkWell(
-                  onTap: () => favoritesProvider.toggleFavorite(article),
-                  borderRadius: BorderRadius.circular(22),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.45),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.35),
+                child: Selector<FavoritesProvider, bool>(
+                  selector: (_, fav) => fav.isFavorite(article),
+                  builder: (context, isFav, _) {
+                    return InkWell(
+                      onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                      borderRadius: BorderRadius.circular(22),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.45),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.35),
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            isFav
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: isFav ? const Color(0xFFEF4444) : Colors.white,
+                            size: 20,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        isFav
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        color: isFav ? const Color(0xFFEF4444) : Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
 

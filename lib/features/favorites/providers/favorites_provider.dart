@@ -1,13 +1,20 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/article.dart';
+import '../../../services/weather_service.dart';
 
 class FavoritesProvider extends ChangeNotifier {
   static const String _keyFavorites = 'favorite_articles';
+  static const String _keyFavoriteCities = 'favorite_cities';
+  static const Duration _timeout = Duration(seconds: 15);
+
   final List<Article> _favorites = [];
+  final List<City> _favoriteCities = [];
+  StreamSubscription<User?>? _authSubscription;
 
   FirebaseAuth? get _auth {
     try {
@@ -26,11 +33,13 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   List<Article> get favorites => List.unmodifiable(_favorites);
+  List<City> get favoriteCities => List.unmodifiable(_favoriteCities);
 
   FavoritesProvider() {
     loadFavorites();
+    _loadFavoriteCities();
     try {
-      _auth?.authStateChanges().listen((user) {
+      _authSubscription = _auth?.authStateChanges().listen((user) {
         if (user != null) {
           syncWithCloud(user.uid);
         }
@@ -38,6 +47,15 @@ class FavoritesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 1. QUẢN LÝ BÀI BÁO YÊU THÍCH (ARTICLES)
+  // ─────────────────────────────────────────────────────────────
   Future<void> loadFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -47,11 +65,106 @@ class FavoritesProvider extends ChangeNotifier {
         for (final itemStr in listJson) {
           try {
             final map = jsonDecode(itemStr) as Map<String, dynamic>;
-            _favorites.add(Article.fromJson(map));
+            final article = Article.fromJson(map);
+            if (article.title.isNotEmpty && article.link.isNotEmpty) {
+              _favorites.add(article);
+            }
           } catch (_) {}
         }
         notifyListeners();
       }
+    } catch (_) {}
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 2. QUẢN LÝ ĐỊA ĐIỂM YÊU THÍCH (CITIES)
+  // ─────────────────────────────────────────────────────────────
+  Future<void> _loadFavoriteCities() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = prefs.getStringList(_keyFavoriteCities);
+      if (listJson != null) {
+        _favoriteCities.clear();
+        for (final itemStr in listJson) {
+          try {
+            final map = jsonDecode(itemStr) as Map<String, dynamic>;
+            final city = City.fromJson(map);
+            if (city.name.isNotEmpty) {
+              _favoriteCities.add(city);
+            }
+          } catch (_) {}
+        }
+        notifyListeners();
+      } else {
+        // Mặc định lưu sẵn các địa điểm tiêu biểu của Việt Nam
+        _favoriteCities.addAll([
+          WeatherService.cities[0], // Hà Nội
+          WeatherService.cities[1], // TP. Hồ Chí Minh
+          WeatherService.cities[3], // Quần đảo Hoàng Sa (Đà Nẵng)
+          WeatherService.cities[4], // Quần đảo Trường Sa (Khánh Hòa)
+        ]);
+        await _saveCitiesToPrefs();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  bool isFavoriteCity(City city) {
+    if (city.name.trim().isEmpty) return false;
+    return _favoriteCities.any((c) => c.name.toLowerCase() == city.name.toLowerCase());
+  }
+
+  Future<void> toggleFavoriteCity(City city) async {
+    if (city.name.trim().isEmpty) return;
+
+    final index = _favoriteCities.indexWhere(
+        (c) => c.name.toLowerCase() == city.name.toLowerCase());
+    if (index >= 0) {
+      _favoriteCities.removeAt(index);
+    } else {
+      _favoriteCities.insert(0, city);
+    }
+    notifyListeners();
+    await _saveCitiesToPrefs();
+
+    final user = _auth?.currentUser;
+    if (user != null) {
+      await _saveCitiesToCloud(user.uid);
+    }
+  }
+
+  Future<void> removeFavoriteCity(City city) async {
+    final index = _favoriteCities.indexWhere(
+        (c) => c.name.toLowerCase() == city.name.toLowerCase());
+    if (index >= 0) {
+      _favoriteCities.removeAt(index);
+      notifyListeners();
+      await _saveCitiesToPrefs();
+
+      final user = _auth?.currentUser;
+      if (user != null) {
+        await _saveCitiesToCloud(user.uid);
+      }
+    }
+  }
+
+  Future<void> _saveCitiesToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson =
+          _favoriteCities.map((c) => jsonEncode(c.toJson())).toList();
+      await prefs.setStringList(_keyFavoriteCities, listJson);
+    } catch (_) {}
+  }
+
+  Future<void> _saveCitiesToCloud(String uid) async {
+    final db = _database;
+    if (db == null) return;
+
+    try {
+      final ref = db.ref('users/$uid/favorite_cities');
+      final listMaps = _favoriteCities.map((c) => c.toJson()).toList();
+      await ref.set(listMaps).timeout(_timeout);
     } catch (_) {}
   }
 
@@ -61,7 +174,7 @@ class FavoritesProvider extends ChangeNotifier {
 
     try {
       final ref = db.ref('users/$uid/favorites');
-      final snapshot = await ref.get();
+      final snapshot = await ref.get().timeout(_timeout);
 
       if (snapshot.exists && snapshot.value != null) {
         final cloudData = snapshot.value;
@@ -69,16 +182,22 @@ class FavoritesProvider extends ChangeNotifier {
 
         if (cloudData is List) {
           for (final item in cloudData) {
-            if (item != null) {
-              final map = Map<String, dynamic>.from(item as Map);
-              cloudList.add(Article.fromJson(map));
+            if (item != null && item is Map) {
+              final map = Map<String, dynamic>.from(item);
+              final article = Article.fromJson(map);
+              if (article.title.isNotEmpty && article.link.isNotEmpty) {
+                cloudList.add(article);
+              }
             }
           }
         } else if (cloudData is Map) {
           cloudData.forEach((key, val) {
-            if (val != null) {
-              final map = Map<String, dynamic>.from(val as Map);
-              cloudList.add(Article.fromJson(map));
+            if (val != null && val is Map) {
+              final map = Map<String, dynamic>.from(val);
+              final article = Article.fromJson(map);
+              if (article.title.isNotEmpty && article.link.isNotEmpty) {
+                cloudList.add(article);
+              }
             }
           });
         }
@@ -99,10 +218,13 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   bool isFavorite(Article article) {
+    if (article.link.trim().isEmpty) return false;
     return _favorites.any((item) => item.link == article.link);
   }
 
   Future<void> toggleFavorite(Article article) async {
+    if (article.link.trim().isEmpty || article.title.trim().isEmpty) return;
+
     final index = _favorites.indexWhere((item) => item.link == article.link);
     if (index >= 0) {
       _favorites.removeAt(index);
@@ -147,7 +269,7 @@ class FavoritesProvider extends ChangeNotifier {
     try {
       final ref = db.ref('users/$uid/favorites');
       final listMaps = _favorites.map((a) => a.toJson()).toList();
-      await ref.set(listMaps);
+      await ref.set(listMaps).timeout(_timeout);
     } catch (_) {}
   }
 }

@@ -7,7 +7,7 @@ import '../../../services/weather_service.dart';
 enum WeatherStatus { initial, loading, success, error }
 
 class WeatherProvider extends ChangeNotifier {
-  final WeatherService _service = WeatherService();
+  final IWeatherService _service;
 
   WeatherStatus _status = WeatherStatus.initial;
   String _errorMessage = '';
@@ -27,12 +27,13 @@ class WeatherProvider extends ChangeNotifier {
           _selectedCity,
       ];
 
-  Future<List<City>> searchCities(String query) {
-    return _service.searchCities(query);
+  WeatherProvider({IWeatherService? service})
+      : _service = service ?? WeatherService() {
+    _loadInitialWeather();
   }
 
-  WeatherProvider() {
-    _loadInitialWeather();
+  Future<List<City>> searchCities(String query) {
+    return _service.searchCities(query);
   }
 
   Future<void> selectCity(City city) async {
@@ -40,7 +41,7 @@ class WeatherProvider extends ChangeNotifier {
       return;
     }
     _selectedCity = city;
-    _isUsingCurrentLocation = city.name == 'Vị trí của bạn';
+    _isUsingCurrentLocation = false;
     _weather = null;
     await fetchWeather();
   }
@@ -64,7 +65,8 @@ class WeatherProvider extends ChangeNotifier {
       );
     } on TimeoutException {
       _setLocationError(
-          'Không lấy được vị trí hiện tại trong thời gian cho phép.');
+        'Không lấy được vị trí hiện tại trong thời gian cho phép.',
+      );
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _status = WeatherStatus.error;
@@ -96,13 +98,13 @@ class WeatherProvider extends ChangeNotifier {
     _status = WeatherStatus.error;
   }
 
-  Future<void> fetchWeather() async {
+  Future<void> fetchWeather({bool forceRefresh = false}) async {
     _status = WeatherStatus.loading;
     _errorMessage = '';
     notifyListeners();
 
     try {
-      final data = await _service.fetchWeather(_selectedCity);
+      final data = await _service.fetchWeather(_selectedCity, forceRefresh: forceRefresh);
       _weather = data;
       _status = WeatherStatus.success;
     } catch (e) {

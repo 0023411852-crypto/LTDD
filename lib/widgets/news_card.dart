@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 
@@ -37,12 +38,19 @@ class NewsCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(16),
               ),
-              child: Image.network(
-                imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
                 height: 190,
                 width: double.infinity,
+                memCacheWidth: 800,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: (_, __) => Container(
+                  height: 190,
+                  color: AppColors.background,
+                  alignment: Alignment.center,
+                  child: const CircularProgressIndicator(strokeWidth: 2),
+                ),
+                errorWidget: (_, __, ___) => Container(
                   height: 190,
                   color: AppColors.background,
                   alignment: Alignment.center,

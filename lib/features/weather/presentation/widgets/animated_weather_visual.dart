@@ -20,7 +20,7 @@ class AnimatedWeatherVisual extends StatefulWidget {
 }
 
 class _AnimatedWeatherVisualState extends State<AnimatedWeatherVisual>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _mainController;
   late final AnimationController _pulseController;
   late final AnimationController _flashController;
@@ -37,6 +37,7 @@ class _AnimatedWeatherVisualState extends State<AnimatedWeatherVisual>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _mainController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
@@ -50,11 +51,40 @@ class _AnimatedWeatherVisualState extends State<AnimatedWeatherVisual>
     _flashController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
-    )..repeat();
+    );
+    if (_isStorm) {
+      _flashController.repeat();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!_mainController.isAnimating) _mainController.repeat();
+      if (!_pulseController.isAnimating) _pulseController.repeat(reverse: true);
+      if (_isStorm && !_flashController.isAnimating) _flashController.repeat();
+    } else {
+      _mainController.stop();
+      _pulseController.stop();
+      _flashController.stop();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant AnimatedWeatherVisual oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.weatherCode != oldWidget.weatherCode) {
+      if (_isStorm && !_flashController.isAnimating) {
+        _flashController.repeat();
+      } else if (!_isStorm && _flashController.isAnimating) {
+        _flashController.stop();
+      }
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _mainController.dispose();
     _pulseController.dispose();
     _flashController.dispose();

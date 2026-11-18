@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/profile_provider.dart';
 
 /// Màn hình Chỉnh sửa & Quản lý Thông tin cá nhân (Personal Info Screen)
 /// Cho phép người dùng chỉnh sửa Tên hiển thị, Số điện thoại, Giới thiệu (Bio),
@@ -17,18 +19,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _bioController;
-  String _selectedAvatar = '';
-  bool _isSaving = false;
-
-  // Danh sách các Avatar minh họa hiện đại có sẵn
-  final List<String> _avatarPresets = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
-    'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
-    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-  ];
 
   @override
   void initState() {
@@ -37,7 +27,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     _nameController = TextEditingController(text: auth.displayName);
     _phoneController = TextEditingController(text: auth.phoneNumber);
     _bioController = TextEditingController(text: auth.bio);
-    _selectedAvatar = auth.photoUrl;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ProfileProvider>().initAvatar(auth.photoUrl);
+      }
+    });
   }
 
   @override
@@ -50,18 +45,17 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
 
     final auth = context.read<AuthProvider>();
-    final success = await auth.updateProfile(
+    final profile = context.read<ProfileProvider>();
+    final success = await profile.saveProfile(
+      authProvider: auth,
       name: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
-      photoUrl: _selectedAvatar.trim(),
       bio: _bioController.text.trim(),
     );
 
     if (!mounted) return;
-    setState(() => _isSaving = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -72,12 +66,16 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               color: Colors.white,
             ),
             const SizedBox(width: 10),
-            Text(
-              success
-                  ? 'Đã cập nhật thông tin cá nhân thành công!'
-                  : (auth.errorMessage.isNotEmpty
-                      ? auth.errorMessage
-                      : 'Không thể cập nhật thông tin.'),
+            Expanded(
+              child: Text(
+                success
+                    ? 'Đã cập nhật thông tin cá nhân thành công!'
+                    : ((profile.errorMessage != null && profile.errorMessage!.isNotEmpty)
+                        ? profile.errorMessage!
+                        : (auth.errorMessage.isNotEmpty
+                            ? auth.errorMessage
+                            : 'Không thể cập nhật thông tin.')),
+              ),
             ),
           ],
         ),
@@ -95,6 +93,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final profile = context.watch<ProfileProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
 
@@ -158,11 +157,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                           ),
                           padding: const EdgeInsets.all(3),
                           child: ClipOval(
-                            child: _selectedAvatar.isNotEmpty
-                                ? Image.network(
-                                    _selectedAvatar,
+                            child: profile.selectedAvatar.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: profile.selectedAvatar,
+                                    memCacheWidth: 300,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _buildFallbackAvatar(cs),
+                                    errorWidget: (_, __, ___) => _buildFallbackAvatar(cs),
                                   )
                                 : _buildFallbackAvatar(cs),
                           ),
@@ -263,17 +263,15 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                       height: 54,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        itemCount: _avatarPresets.length,
+                        itemCount: profile.avatarPresets.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemBuilder: (context, index) {
-                          final url = _avatarPresets[index];
-                          final isSelected = _selectedAvatar == url;
+                          final url = profile.avatarPresets[index];
+                          final isSelected = profile.selectedAvatar == url;
 
                           return GestureDetector(
                             onTap: () {
-                              setState(() {
-                                _selectedAvatar = url;
-                              });
+                              context.read<ProfileProvider>().selectAvatar(url);
                             },
                             child: Container(
                               width: 52,
@@ -289,10 +287,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                               ),
                               padding: const EdgeInsets.all(2),
                               child: ClipOval(
-                                child: Image.network(
-                                  url,
+                                child: CachedNetworkImage(
+                                  imageUrl: url,
+                                  memCacheWidth: 160,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.person),
+                                  errorWidget: (_, __, ___) => const Icon(Icons.person),
                                 ),
                               ),
                             ),
@@ -407,7 +406,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveProfile,
+                  onPressed: profile.isSaving ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
@@ -417,7 +416,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: _isSaving
+                  child: profile.isSaving
                       ? const SizedBox(
                           width: 22,
                           height: 22,

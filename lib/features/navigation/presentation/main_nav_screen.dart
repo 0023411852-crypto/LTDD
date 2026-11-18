@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../news/presentation/news_list_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../weather/presentation/weather_screen.dart';
+import '../providers/navigation_provider.dart';
 
 class MainNavScreen extends StatefulWidget {
   const MainNavScreen({super.key});
@@ -14,7 +16,6 @@ class MainNavScreen extends StatefulWidget {
 }
 
 class _MainNavScreenState extends State<MainNavScreen> {
-  int _currentIndex = 0;
   late final List<Widget> _screens;
 
   @override
@@ -22,8 +23,8 @@ class _MainNavScreenState extends State<MainNavScreen> {
     super.initState();
     _screens = [
       HomeScreen(
-        onNavigateToNews: () => setState(() => _currentIndex = 1),
-        onNavigateToWeather: () => setState(() => _currentIndex = 2),
+        onNavigateToNews: () => context.read<NavigationProvider>().toNews(),
+        onNavigateToWeather: () => context.read<NavigationProvider>().toWeather(),
       ),
       const NewsListScreen(),
       const WeatherScreen(),
@@ -33,6 +34,8 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavigationProvider>();
+    final currentIndex = nav.currentIndex;
     final cs = Theme.of(context).colorScheme;
     const appMaxWidth = 560.0;
 
@@ -62,11 +65,9 @@ class _MainNavScreenState extends State<MainNavScreen> {
               borderRadius: BorderRadius.circular(26),
               child: NavigationBar(
                 height: 68,
-                selectedIndex: _currentIndex,
+                selectedIndex: currentIndex,
                 onDestinationSelected: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
+                  nav.setIndex(index);
                 },
                 backgroundColor: Colors.transparent,
                 indicatorColor: cs.primaryContainer,
@@ -112,7 +113,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
             width: math.min(MediaQuery.sizeOf(context).width, appMaxWidth),
             height: double.infinity,
             child: IndexedStack(
-              index: _currentIndex,
+              index: currentIndex,
               children: _screens,
             ),
           ),

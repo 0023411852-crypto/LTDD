@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -68,14 +69,23 @@ class AuthProvider extends ChangeNotifier {
         userEmail.endsWith('@admin.portal');
   }
 
+  StreamSubscription<User?>? _authStateSubscription;
+
   AuthProvider() {
     _loadProfilePrefs();
     try {
       _auth = FirebaseAuth.instance;
-      _auth?.authStateChanges().listen(_onAuthStateChanged);
+      _authStateSubscription =
+          _auth?.authStateChanges().listen(_onAuthStateChanged);
     } catch (_) {
       _status = AuthStatus.unauthenticated;
     }
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadProfilePrefs() async {

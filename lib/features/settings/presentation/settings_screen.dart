@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _breakingNewsNotif = true;
-  bool _weatherNotif = true;
-  bool _weatherAlertNotif = true;
-  bool _promoNotif = false;
-  bool _autoDownloadImages = true;
-  String _fontSize = 'Tiêu chuẩn';
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final settings = context.watch<SettingsProvider>();
     final currentMode = themeProvider.themeMode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isVi = settings.isVietnamese;
 
     // Màu sắc hài hòa theo chế độ Sáng / Tối
     final bgColor = isDark ? const Color(0xFF0B132B) : const Color(0xFFF8FAFC);
@@ -41,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Cài đặt',
+          isVi ? 'Cài đặt' : 'Settings',
           style: TextStyle(
             color: textColor,
             fontWeight: FontWeight.w800,
@@ -56,7 +47,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // ══════════════════════════════════════════════════════════
           // 1. CHỌN CHẾ ĐỘ GIAO DIỆN (SÁNG / TỐI / HỆ THỐNG)
           // ══════════════════════════════════════════════════════════
-          _buildSectionHeader('GIAO DIỆN & HIỂN THỊ', subTextColor),
+          _buildSectionHeader(
+            isVi ? 'GIAO DIỆN & HIỂN THỊ' : 'APPEARANCE & DISPLAY',
+            subTextColor,
+          ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -75,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Chế độ hiển thị màn hình',
+                  isVi ? 'Chế độ hiển thị màn hình' : 'Screen Display Mode',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -84,7 +78,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Chọn giao diện phù hợp giúp bảo vệ mắt và tiết kiệm pin.',
+                  isVi
+                      ? 'Chọn giao diện phù hợp giúp bảo vệ mắt và tiết kiệm pin.'
+                      : 'Choose a theme that helps protect eyes and saves battery.',
                   style: TextStyle(fontSize: 12.5, color: subTextColor),
                 ),
                 const SizedBox(height: 14),
@@ -94,7 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Expanded(
                       child: _buildThemeCard(
-                        title: 'Sáng',
+                        title: isVi ? 'Sáng' : 'Light',
                         icon: Icons.wb_sunny_rounded,
                         iconColor: const Color(0xFFF59E0B),
                         isSelected: currentMode == ThemeMode.light,
@@ -107,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _buildThemeCard(
-                        title: 'Tối',
+                        title: isVi ? 'Tối' : 'Dark',
                         icon: Icons.nightlight_round,
                         iconColor: const Color(0xFF818CF8),
                         isSelected: currentMode == ThemeMode.dark,
@@ -120,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _buildThemeCard(
-                        title: 'Hệ thống',
+                        title: isVi ? 'Hệ thống' : 'System',
                         icon: Icons.settings_system_daydream_rounded,
                         iconColor: const Color(0xFF10B981),
                         isSelected: currentMode == ThemeMode.system,
@@ -140,28 +136,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.format_size_rounded,
                   iconBg: const Color(0xFF8B5CF6).withOpacity(0.14),
                   iconColor: const Color(0xFF8B5CF6),
-                  title: 'Cỡ chữ đọc báo',
-                  subtitle: _fontSize,
+                  title: isVi ? 'Cỡ chữ đọc báo' : 'Article Font Size',
+                  subtitle: '${settings.fontSize} (${(settings.fontScale * 100).round()}%)',
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onTap: () => _showFontSizeDialog(context, isDark, cardColor, textColor, primaryColor),
+                  onTap: () => _showFontSizeDialog(
+                    context,
+                    settings,
+                    isVi,
+                    cardColor,
+                    textColor,
+                    primaryColor,
+                  ),
                 ),
                 Divider(color: borderColor),
 
-                // Ngôn ngữ
+                // Ngôn ngữ ứng dụng
                 _buildActionRow(
                   icon: Icons.language_rounded,
                   iconBg: const Color(0xFF0284C7).withOpacity(0.14),
                   iconColor: const Color(0xFF0284C7),
-                  title: 'Ngôn ngữ ứng dụng',
-                  subtitle: 'Tiếng Việt (Mặc định)',
+                  title: isVi ? 'Ngôn ngữ ứng dụng' : 'App Language',
+                  subtitle: settings.languageLabel,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Ứng dụng hiện hỗ trợ ngôn ngữ Tiếng Việt.')),
-                    );
-                  },
+                  onTap: () => _showLanguageDialog(
+                    context,
+                    settings,
+                    cardColor,
+                    textColor,
+                    primaryColor,
+                  ),
                 ),
               ],
             ),
@@ -171,7 +176,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // ══════════════════════════════════════════════════════════
           // 2. THÔNG BÁO & TIN TỨC
           // ══════════════════════════════════════════════════════════
-          _buildSectionHeader('THÔNG BÁO & CẢNH BÁO', subTextColor),
+          _buildSectionHeader(
+            isVi ? 'THÔNG BÁO & CẢNH BÁO' : 'NOTIFICATIONS & ALERTS',
+            subTextColor,
+          ),
           Container(
             decoration: BoxDecoration(
               color: cardColor,
@@ -191,48 +199,118 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.newspaper_rounded,
                   iconBg: const Color(0xFFEF4444).withOpacity(0.14),
                   iconColor: const Color(0xFFEF4444),
-                  title: 'Tin tức nóng & khẩn cấp',
-                  subtitle: 'Nhận thông báo khi có sự kiện xã hội quan trọng',
-                  value: _breakingNewsNotif,
+                  title: isVi ? 'Tin tức nóng & khẩn cấp' : 'Breaking News Alerts',
+                  subtitle: isVi
+                      ? 'Nhận thông báo khi có sự kiện xã hội quan trọng'
+                      : 'Notify on critical and breaking social events',
+                  value: settings.breakingNewsNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) => setState(() => _breakingNewsNotif = val),
+                  onChanged: (val) {
+                    settings.setBreakingNewsNotif(val);
+                    _showToast(
+                      context,
+                      val
+                          ? (isVi ? 'Đã bật thông báo tin nóng' : 'Breaking news enabled')
+                          : (isVi ? 'Đã tắt thông báo tin nóng' : 'Breaking news disabled'),
+                    );
+                  },
                 ),
                 Divider(color: borderColor),
                 _buildSwitchRow(
                   icon: Icons.wb_sunny_rounded,
                   iconBg: const Color(0xFFF59E0B).withOpacity(0.14),
                   iconColor: const Color(0xFFF59E0B),
-                  title: 'Dự báo thời tiết mỗi sáng',
-                  subtitle: 'Gửi bản tin dự báo thời tiết lúc 07:00 hàng ngày',
-                  value: _weatherNotif,
+                  title: isVi ? 'Dự báo thời tiết mỗi sáng' : 'Daily Morning Weather',
+                  subtitle: isVi
+                      ? 'Gửi bản tin dự báo thời tiết lúc 07:00 hàng ngày'
+                      : 'Receive morning weather forecast at 07:00 AM',
+                  value: settings.weatherNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) => setState(() => _weatherNotif = val),
+                  onChanged: (val) {
+                    settings.setWeatherNotif(val);
+                    _showToast(
+                      context,
+                      val
+                          ? (isVi ? 'Đã bật dự báo thời tiết sáng' : 'Morning weather forecast enabled')
+                          : (isVi ? 'Đã tắt dự báo thời tiết sáng' : 'Morning weather forecast disabled'),
+                    );
+                  },
                 ),
                 Divider(color: borderColor),
                 _buildSwitchRow(
                   icon: Icons.warning_amber_rounded,
                   iconBg: const Color(0xFF0D9488).withOpacity(0.14),
                   iconColor: const Color(0xFF0D9488),
-                  title: 'Cảnh báo thời tiết nguy hiểm',
-                  subtitle: 'Cảnh báo dông lốc, mưa to ngập lụt hoặc chỉ số UV cao',
-                  value: _weatherAlertNotif,
+                  title: isVi ? 'Cảnh báo thời tiết nguy hiểm' : 'Severe Weather Warnings',
+                  subtitle: isVi
+                      ? 'Cảnh báo dông lốc, mưa to ngập lụt hoặc chỉ số UV cao'
+                      : 'Alerts for storms, heavy rainfall, flooding or high UV index',
+                  value: settings.weatherAlertNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) => setState(() => _weatherAlertNotif = val),
+                  onChanged: (val) {
+                    settings.setWeatherAlertNotif(val);
+                    _showToast(
+                      context,
+                      val
+                          ? (isVi ? 'Đã bật cảnh báo thời tiết nguy hiểm' : 'Severe weather alerts enabled')
+                          : (isVi ? 'Đã tắt cảnh báo thời tiết nguy hiểm' : 'Severe weather alerts disabled'),
+                    );
+                  },
                 ),
                 Divider(color: borderColor),
                 _buildSwitchRow(
                   icon: Icons.card_giftcard_rounded,
                   iconBg: const Color(0xFF6366F1).withOpacity(0.14),
                   iconColor: const Color(0xFF6366F1),
-                  title: 'Tin tức tiện ích & Khuyến mại',
-                  subtitle: 'Các chương trình và thông tin ưu đãi tiện ích',
-                  value: _promoNotif,
+                  title: isVi ? 'Tin tức tiện ích & Khuyến mại' : 'Promotions & Utilities',
+                  subtitle: isVi
+                      ? 'Các chương trình và thông tin ưu đãi tiện ích'
+                      : 'Utility programs and discount campaigns',
+                  value: settings.promoNotif,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) => setState(() => _promoNotif = val),
+                  onChanged: (val) {
+                    settings.setPromoNotif(val);
+                    _showToast(
+                      context,
+                      val
+                          ? (isVi ? 'Đã bật thông báo tiện ích' : 'Promotions enabled')
+                          : (isVi ? 'Đã tắt thông báo tiện ích' : 'Promotions disabled'),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1654F0).withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14),
+              border:
+                  Border.all(color: const Color(0xFF1654F0).withOpacity(0.18)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    color: Color(0xFF1654F0), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isVi
+                        ? 'Lưu ý: Bạn có thể tắt riêng "Tin tức nóng" để không nhận thông báo bài báo mới, trong khi "Dự báo thời tiết 07:00 sáng" vẫn hoạt động độc lập và gửi thông báo đúng giờ mỗi ngày.'
+                        : 'Note: You can turn off Breaking News to stop news alerts, while 07:00 AM Weather Briefing operates independently and still delivers daily on time.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textColor.withOpacity(0.85),
+                      height: 1.4,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -240,9 +318,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 22),
 
           // ══════════════════════════════════════════════════════════
-          // 3. DỮ LIỆU & BỘ NHỚ
+          // 3. DỮ LIỆU & BỘ NHỚ TẠM
           // ══════════════════════════════════════════════════════════
-          _buildSectionHeader('DỮ LIỆU & BỘ NHỚ TẠM', subTextColor),
+          _buildSectionHeader(
+            isVi ? 'DỮ LIỆU & BỘ NHỚ TẠM' : 'DATA & CACHE MEMORY',
+            subTextColor,
+          ),
           Container(
             decoration: BoxDecoration(
               color: cardColor,
@@ -262,30 +343,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.photo_size_select_actual_outlined,
                   iconBg: const Color(0xFF3B82F6).withOpacity(0.14),
                   iconColor: const Color(0xFF3B82F6),
-                  title: 'Tự động tải ảnh tin tức',
-                  subtitle: 'Tải trước hình ảnh bài báo để đọc nhanh hơn',
-                  value: _autoDownloadImages,
+                  title: isVi ? 'Tự động tải ảnh tin tức' : 'Auto-load News Images',
+                  subtitle: isVi
+                      ? 'Tải trước hình ảnh bài báo để đọc nhanh hơn'
+                      : 'Pre-cache article pictures for faster reading',
+                  value: settings.autoDownloadImages,
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onChanged: (val) => setState(() => _autoDownloadImages = val),
+                  onChanged: (val) {
+                    settings.setAutoDownloadImages(val);
+                    _showToast(
+                      context,
+                      val
+                          ? (isVi ? 'Đã bật tự động tải ảnh' : 'Auto image loading enabled')
+                          : (isVi ? 'Đã bật chế độ tiết kiệm dữ liệu (tắt tải trước ảnh)' : 'Data saver enabled'),
+                    );
+                  },
                 ),
                 Divider(color: borderColor),
                 _buildActionRow(
                   icon: Icons.cleaning_services_rounded,
                   iconBg: const Color(0xFF10B981).withOpacity(0.14),
                   iconColor: const Color(0xFF10B981),
-                  title: 'Xóa bộ nhớ đệm (Cache)',
-                  subtitle: 'Giải phóng khoảng 14.8 MB bộ nhớ máy',
+                  title: isVi ? 'Xóa bộ nhớ đệm (Cache)' : 'Clear Cached Data',
+                  subtitle: settings.cacheSizeMB > 0.05
+                      ? (isVi
+                          ? 'Giải phóng khoảng ${settings.cacheSizeFormatted} bộ nhớ tạm'
+                          : 'Free up approx ${settings.cacheSizeFormatted} memory')
+                      : (isVi ? 'Bộ nhớ đệm sạch sẽ (0.0 MB)' : 'Cache is completely clean (0.0 MB)'),
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã dọn dẹp bộ nhớ đệm cache thành công!'),
-                        backgroundColor: Color(0xFF10B981),
-                      ),
-                    );
-                  },
+                  onTap: () => _confirmClearCache(context, settings, isVi, cardColor, textColor),
                 ),
               ],
             ),
@@ -295,7 +383,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // ══════════════════════════════════════════════════════════
           // 4. VỀ ỨNG DỤNG & ĐIỀU KHOẢN
           // ══════════════════════════════════════════════════════════
-          _buildSectionHeader('THÔNG TIN ỨNG DỤNG', subTextColor),
+          _buildSectionHeader(
+            isVi ? 'THÔNG TIN ỨNG DỤNG' : 'APPLICATION INFO',
+            subTextColor,
+          ),
           Container(
             decoration: BoxDecoration(
               color: cardColor,
@@ -315,8 +406,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.info_outline_rounded,
                   iconBg: const Color(0xFF1E60F2).withOpacity(0.14),
                   iconColor: const Color(0xFF1E60F2),
-                  title: 'Phiên bản ứng dụng',
-                  subtitle: 'Tin tức & Thời tiết v1.0.0',
+                  title: isVi ? 'Phiên bản ứng dụng' : 'App Version',
+                  subtitle: 'Daily News & Weather v1.1.0 (Build 2026)',
                   textColor: textColor,
                   subTextColor: subTextColor,
                   onTap: () {},
@@ -326,35 +417,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.privacy_tip_outlined,
                   iconBg: const Color(0xFF14B8A6).withOpacity(0.14),
                   iconColor: const Color(0xFF14B8A6),
-                  title: 'Chính sách bảo mật',
-                  subtitle: 'Cách chúng tôi bảo vệ thông tin của bạn',
+                  title: isVi ? 'Chính sách bảo mật' : 'Privacy Policy',
+                  subtitle: isVi
+                      ? 'Cách chúng tôi bảo vệ thông tin của bạn'
+                      : 'How we safeguard your personal data',
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onTap: () => _showPolicyDialog(context, 'Chính sách bảo mật', isDark, cardColor, textColor),
+                  onTap: () => _showPolicyDialog(
+                    context,
+                    isVi ? 'Chính sách bảo mật' : 'Privacy Policy',
+                    cardColor,
+                    textColor,
+                    isVi,
+                  ),
                 ),
                 Divider(color: borderColor),
                 _buildActionRow(
                   icon: Icons.description_outlined,
                   iconBg: const Color(0xFF64748B).withOpacity(0.14),
                   iconColor: const Color(0xFF64748B),
-                  title: 'Điều khoản sử dụng',
-                  subtitle: 'Quy định và quyền lợi người dùng',
+                  title: isVi ? 'Điều khoản sử dụng' : 'Terms of Service',
+                  subtitle: isVi
+                      ? 'Quy định và quyền lợi người dùng'
+                      : 'User rights and platform terms',
                   textColor: textColor,
                   subTextColor: subTextColor,
-                  onTap: () => _showPolicyDialog(context, 'Điều khoản sử dụng', isDark, cardColor, textColor),
+                  onTap: () => _showPolicyDialog(
+                    context,
+                    isVi ? 'Điều khoản sử dụng' : 'Terms of Service',
+                    cardColor,
+                    textColor,
+                    isVi,
+                  ),
                 ),
                 Divider(color: borderColor),
                 _buildActionRow(
                   icon: Icons.star_rate_rounded,
                   iconBg: const Color(0xFFF59E0B).withOpacity(0.14),
                   iconColor: const Color(0xFFF59E0B),
-                  title: 'Đánh giá ứng dụng 5 sao',
-                  subtitle: 'Ủng hộ nhà phát triển trên Google Play',
+                  title: isVi ? 'Đánh giá ứng dụng 5 sao' : 'Rate Us 5 Stars',
+                  subtitle: isVi
+                      ? 'Ủng hộ nhà phát triển trên Google Play'
+                      : 'Support developers on Google Play Store',
                   textColor: textColor,
                   subTextColor: subTextColor,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cảm ơn bạn đã yêu thích và đánh giá ứng dụng! ❤️')),
+                    _showToast(
+                      context,
+                      isVi
+                          ? 'Cảm ơn bạn đã yêu thích và đánh giá ứng dụng! ❤️'
+                          : 'Thank you for supporting and rating our app! ❤️',
                     );
                   },
                 ),
@@ -363,6 +475,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  void _showToast(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -406,7 +530,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               : cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? primaryColor : (isDarkTheme ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            color: isSelected
+                ? primaryColor
+                : (isDarkTheme ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -546,40 +672,256 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── DIALOG CHỌN CỠ CHỮ ─────────────────────────────────────────────────────
+  // ── DIALOG CHỌN CỠ CHỮ ĐỌC BÁO (KÈM PREVIEW THỰC TẾ) ───────────────────────
   void _showFontSizeDialog(
-      BuildContext context, bool isDark, Color cardColor, Color textColor, Color primaryColor) {
+    BuildContext context,
+    SettingsProvider settings,
+    bool isVi,
+    Color cardColor,
+    Color textColor,
+    Color primaryColor,
+  ) {
+    final sizes = [
+      {'name': 'Nhỏ', 'scale': '88%'},
+      {'name': 'Tiêu chuẩn', 'scale': '100%'},
+      {'name': 'Lớn', 'scale': '118%'},
+      {'name': 'Rất lớn', 'scale': '135%'},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: Row(
+          children: [
+            Icon(Icons.format_size_rounded, color: primaryColor, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              isVi ? 'Chọn cỡ chữ đọc bài' : 'Reading Font Size',
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 17),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Preview text
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: primaryColor.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isVi ? 'Xem trước nội dung:' : 'Content Preview:',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isVi
+                        ? 'Dự báo thời tiết hôm nay trời nắng nhẹ, nhiệt độ 28°C. Không khí trong lành.'
+                        : 'Today forecast shows mild sunlight, temperature 28°C. Clean fresh air.',
+                    style: TextStyle(
+                      fontSize: 15.0 * settings.fontScale,
+                      color: textColor,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            ...sizes.map((item) {
+              final sizeName = item['name']!;
+              final scale = item['scale']!;
+              final isSelected = settings.fontSize == sizeName;
+
+              return ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: isSelected ? primaryColor.withOpacity(0.1) : null,
+                leading: Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  color: isSelected ? primaryColor : Colors.grey,
+                  size: 20,
+                ),
+                title: Text(
+                  sizeName,
+                  style: TextStyle(
+                    color: isSelected ? primaryColor : textColor,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+                trailing: Text(
+                  scale,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
+                onTap: () {
+                  settings.setFontSize(sizeName);
+                  Navigator.pop(ctx);
+                  _showToast(
+                    context,
+                    isVi
+                        ? 'Đã đổi cỡ chữ sang: $sizeName ($scale)'
+                        : 'Font size changed to: $sizeName ($scale)',
+                  );
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── DIALOG CHỌN NGÔN NGỮ (TIẾNG VIỆT / TIẾNG ANH) ───────────────────────────
+  void _showLanguageDialog(
+    BuildContext context,
+    SettingsProvider settings,
+    Color cardColor,
+    Color textColor,
+    Color primaryColor,
+  ) {
+    final currentLang = settings.language;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: Row(
+          children: [
+            Icon(Icons.language_rounded, color: primaryColor, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              settings.isVietnamese ? 'Ngôn ngữ ứng dụng' : 'Select App Language',
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 17),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Tiếng Việt
+            ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: currentLang == 'vi' ? primaryColor.withOpacity(0.1) : null,
+              leading: const Text('🇻🇳', style: TextStyle(fontSize: 24)),
+              title: Text(
+                'Tiếng Việt',
+                style: TextStyle(
+                  fontWeight: currentLang == 'vi' ? FontWeight.bold : FontWeight.w600,
+                  color: currentLang == 'vi' ? primaryColor : textColor,
+                ),
+              ),
+              subtitle: const Text('Ngôn ngữ mặc định', style: TextStyle(fontSize: 12)),
+              trailing: currentLang == 'vi'
+                  ? Icon(Icons.check_circle_rounded, color: primaryColor)
+                  : null,
+              onTap: () {
+                settings.setLanguage('vi');
+                Navigator.pop(ctx);
+                _showToast(context, 'Đã chuyển sang Tiếng Việt thành công!');
+              },
+            ),
+            const SizedBox(height: 6),
+
+            // English
+            ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: currentLang == 'en' ? primaryColor.withOpacity(0.1) : null,
+              leading: const Text('🇬🇧', style: TextStyle(fontSize: 24)),
+              title: Text(
+                'English',
+                style: TextStyle(
+                  fontWeight: currentLang == 'en' ? FontWeight.bold : FontWeight.w600,
+                  color: currentLang == 'en' ? primaryColor : textColor,
+                ),
+              ),
+              subtitle: const Text('English language', style: TextStyle(fontSize: 12)),
+              trailing: currentLang == 'en'
+                  ? Icon(Icons.check_circle_rounded, color: primaryColor)
+                  : null,
+              onTap: () {
+                settings.setLanguage('en');
+                Navigator.pop(ctx);
+                _showToast(context, 'Language changed to English successfully!');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── XÁC NHẬN DỌN DẸP BỘ NHỚ ĐỆM CACHE ─────────────────────────────────────
+  void _confirmClearCache(
+    BuildContext context,
+    SettingsProvider settings,
+    bool isVi,
+    Color cardColor,
+    Color textColor,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Chọn cỡ chữ đọc bài', style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: ['Nhỏ', 'Tiêu chuẩn', 'Lớn'].map((size) {
-            final isSelected = _fontSize == size;
-            return ListTile(
-              title: Text(size,
-                  style: TextStyle(
-                    color: isSelected ? primaryColor : textColor,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  )),
-              trailing: isSelected ? Icon(Icons.check_rounded, color: primaryColor) : null,
-              onTap: () {
-                setState(() => _fontSize = size);
-                Navigator.pop(ctx);
-              },
-            );
-          }).toList(),
+        title: Text(
+          isVi ? 'Dọn dẹp bộ nhớ đệm?' : 'Clear Cache Memory?',
+          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
         ),
+        content: Text(
+          isVi
+              ? 'Thao tác này sẽ xóa toàn bộ hình ảnh và dữ liệu lưu tạm (${settings.cacheSizeFormatted}) để giải phóng dung lượng bộ nhớ máy. Ứng dụng sẽ tự động tải lại dữ liệu khi cần.'
+              : 'This will purge all temporary cached images and files (${settings.cacheSizeFormatted}) to free up storage space.',
+          style: TextStyle(fontSize: 13.5, color: textColor.withOpacity(0.85), height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(isVi ? 'Hủy' : 'Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final freed = await settings.clearCache();
+              if (context.mounted) {
+                _showToast(
+                  context,
+                  isVi
+                      ? 'Đã dọn dẹp ${freed.toStringAsFixed(1)} MB bộ nhớ đệm cache thành công!'
+                      : 'Cleared ${freed.toStringAsFixed(1)} MB cache successfully!',
+                );
+              }
+            },
+            child: Text(isVi ? 'Dọn dẹp ngay' : 'Clear Now'),
+          ),
+        ],
       ),
     );
   }
 
   // ── DIALOG HIỂN THỊ CHÍNH SÁCH ─────────────────────────────────────────────
   void _showPolicyDialog(
-      BuildContext context, String title, bool isDark, Color cardColor, Color textColor) {
+    BuildContext context,
+    String title,
+    Color cardColor,
+    Color textColor,
+    bool isVi,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -587,13 +929,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
         content: Text(
-          'Ứng dụng Tin tức & Thời tiết cam kết bảo mật tối đa dữ liệu của người dùng, tôn trọng quyền riêng tư và chỉ lưu trữ các thông tin thiết yếu phục vụ cho việc cá nhân hóa trải nghiệm đọc tin và dự báo thời tiết.',
+          isVi
+              ? 'Ứng dụng Tin tức & Thời tiết cam kết bảo mật tối đa dữ liệu của người dùng, tôn trọng quyền riêng tư và chỉ lưu trữ các thông tin thiết yếu phục vụ cho việc cá nhân hóa trải nghiệm đọc tin và dự báo thời tiết.'
+              : 'Daily News & Weather Portal is committed to user data privacy and only retains essential preferences to personalize your reading and weather experience.',
           style: TextStyle(fontSize: 14, color: textColor.withOpacity(0.85), height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Đã hiểu'),
+            child: Text(isVi ? 'Đã hiểu' : 'Understood'),
           ),
         ],
       ),

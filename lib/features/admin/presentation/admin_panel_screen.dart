@@ -1,10 +1,15 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/article.dart';
+import '../../../services/news_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../favorites/providers/favorites_provider.dart';
 import '../../news/providers/news_provider.dart';
+import '../../notifications/providers/notifications_provider.dart';
+import '../../settings/providers/settings_provider.dart';
 import '../../weather/providers/weather_provider.dart';
+import '../providers/admin_provider.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -14,23 +19,69 @@ class AdminPanelScreen extends StatefulWidget {
 }
 
 class _AdminPanelScreenState extends State<AdminPanelScreen> {
-  // 0: Dashboard, 1: Tin tức, 2: Danh mục, 3: Người dùng, 4: Gửi thông báo, 5: Báo cáo
-  int _currentTab = 0;
+  // Trạng thái Admin được quản lý tập trung qua AdminProvider & NewsProvider
+  int get _currentTab => context.read<AdminProvider>().currentTab;
+  String get _newsSearchQuery => context.read<AdminProvider>().newsSearchQuery;
+  String get _newsFilter => context.read<AdminProvider>().newsFilter;
+  Set<String> get _pendingArticleTitles =>
+      context.watch<NewsProvider>().pendingArticleTitles;
+  List<Map<String, dynamic>> get _broadcastNotifications =>
+      context.read<AdminProvider>().broadcastNotifications;
+  String get _selectedNotifType =>
+      context.read<AdminProvider>().selectedNotifType;
 
-  // Search & Filter queries
-  String _newsSearchQuery = '';
-  String _newsFilter = 'Tất cả'; // Tất cả, Đã duyệt, Chờ duyệt
+  void _setTab(int tab) => context.read<AdminProvider>().setTab(tab);
+  void _setNewsSearchQuery(String query) =>
+      context.read<AdminProvider>().setNewsSearchQuery(query);
+  void _setNewsFilter(String filter) =>
+      context.read<AdminProvider>().setNewsFilter(filter);
+  void _setSelectedNotifType(String type) =>
+      context.read<AdminProvider>().setSelectedNotifType(type);
+  void _toggleApproval(String title) {
+    context.read<AdminProvider>().toggleApproval(title);
+    context.read<NewsProvider>().toggleArticleApproval(title);
+  }
 
-  // Quản lý trạng thái duyệt bài cục bộ (dựa trên Title bài viết thật)
-  final Set<String> _pendingArticleTitles = {};
+  void _broadcastNotification(String title, String body, String type) {
+    context.read<AdminProvider>().broadcastNotification(
+          title: title,
+          body: body,
+          type: type,
+        );
 
-  // Danh sách thông báo thực tế do Admin phát sóng trong phiên
-  final List<Map<String, dynamic>> _broadcastNotifications = [];
+    // Đồng bộ vào NotificationsProvider để lưu vĩnh viễn và hiển thị cho toàn bộ người dùng
+    context.read<NotificationsProvider>().addNotification(
+          title: title,
+          body: body,
+          type: type == 'Tin nóng' ? 'breaking' : 'news',
+        );
+
+    final settings = context.read<SettingsProvider>();
+    final isAllowed = type == 'Tin nóng' ? settings.breakingNewsNotif : true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isAllowed
+                    ? 'Đã phát sóng thông báo "$title" đến người dùng'
+                    : 'Đã lưu thông báo (người dùng đang tắt nhận thông báo tin nóng trong Cài đặt)',
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF10B981),
+      ),
+    );
+  }
 
   // Controllers cho form gửi thông báo
   final _notifTitleController = TextEditingController();
   final _notifBodyController = TextEditingController();
-  String _selectedNotifType = 'Tin nóng';
 
   @override
   void dispose() {
@@ -84,6 +135,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final authProvider = context.watch<AuthProvider>();
     final favProvider = context.watch<FavoritesProvider>();
     final weatherProvider = context.watch<WeatherProvider>();
+    context.watch<AdminProvider>();
 
     if (!authProvider.isAdmin) {
       return Scaffold(
@@ -125,7 +177,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       );
     }
 
-    final realArticles = newsProvider.articles;
+    final realArticles = newsProvider.allArticles;
     final realCategories = newsProvider.categories;
 
     return Scaffold(
@@ -239,7 +291,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: InkWell(
-                onTap: () => setState(() => _currentTab = idx),
+                onTap: () => _setTab(idx),
                 borderRadius: BorderRadius.circular(20),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -296,7 +348,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     FavoritesProvider fav,
     WeatherProvider weather,
   ) {
-    final articleCount = news.articles.length;
+    final articleCount = news.totalArticlesCount;
     final categoryCount = news.categories.length;
     final favCount = fav.favorites.length;
     final temp = weather.weather?.temperature.round();
@@ -482,7 +534,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     icon: Icons.post_add_rounded,
                     color: const Color(0xFF1E60F2),
                     onTap: () {
-                      setState(() => _currentTab = 1);
+                      _setTab(1);
                       _showAddArticleDialog(context);
                     },
                   ),
@@ -490,19 +542,19 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     label: 'Xem danh sách tin',
                     icon: Icons.newspaper_rounded,
                     color: const Color(0xFF10B981),
-                    onTap: () => setState(() => _currentTab = 1),
+                    onTap: () => _setTab(1),
                   ),
                   _buildQuickActionBtn(
                     label: 'Phát sóng thông báo',
                     icon: Icons.send_rounded,
                     color: const Color(0xFFEC4899),
-                    onTap: () => setState(() => _currentTab = 4),
+                    onTap: () => _setTab(4),
                   ),
                   _buildQuickActionBtn(
                     label: 'Báo cáo nguồn tin',
                     icon: Icons.pie_chart_rounded,
                     color: const Color(0xFF8B5CF6),
-                    onTap: () => setState(() => _currentTab = 5),
+                    onTap: () => _setTab(5),
                   ),
                 ],
               ),
@@ -525,23 +577,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Phân bổ tin bài thực tế',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: _textColor),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Đếm số lượng bài viết theo ngày đăng (publishedAt)',
-                        style: TextStyle(fontSize: 12, color: _subTextColor),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Phân bổ tin bài thực tế',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: _textColor),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Đếm số lượng bài viết theo ngày đăng (publishedAt)',
+                          style: TextStyle(fontSize: 12, color: _subTextColor),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -567,7 +623,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 width: double.infinity,
                 child: CustomPaint(
                   painter: _RealNewsDistributionChartPainter(
-                    articles: news.articles,
+                    articles: news.allArticles,
                   ),
                 ),
               ),
@@ -595,7 +651,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   // 2. TAB: QUẢN LÝ TIN TỨC THỰC TẾ (Lấy trực tiếp từ NewsProvider)
   // ══════════════════════════════════════════════════════════════════
   Widget _buildNewsManagementTab(NewsProvider news) {
-    final allArticles = news.articles;
+    final allArticles = news.allArticles;
 
     final filtered = allArticles.where((a) {
       final matchesSearch = _newsSearchQuery.isEmpty ||
@@ -620,7 +676,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             child: Column(
               children: [
                 TextField(
-                  onChanged: (val) => setState(() => _newsSearchQuery = val),
+                  onChanged: (val) => _setNewsSearchQuery(val),
                   decoration: InputDecoration(
                     hintText:
                         'Tìm kiếm trên ${allArticles.length} bài viết thật...',
@@ -631,8 +687,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     suffixIcon: _newsSearchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 18),
-                            onPressed: () =>
-                                setState(() => _newsSearchQuery = ''),
+                            onPressed: () => _setNewsSearchQuery(''),
                           )
                         : null,
                     filled: true,
@@ -651,35 +706,41 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Filter tabs: Tất cả, Đã duyệt, Chờ duyệt
-                Row(
-                  children: ['Tất cả', 'Đã duyệt', 'Chờ duyệt'].map((tab) {
-                    final isSel = _newsFilter == tab;
-                    final count = tab == 'Tất cả'
-                        ? allArticles.length
-                        : tab == 'Chờ duyệt'
-                            ? _pendingArticleTitles.length
-                            : allArticles.length - _pendingArticleTitles.length;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text('$tab ($count)'),
-                        selected: isSel,
-                        onSelected: (_) => setState(() => _newsFilter = tab),
-                        selectedColor:
-                            const Color(0xFF1E60F2).withOpacity(0.12),
-                        checkmarkColor: const Color(0xFF1E60F2),
-                        labelStyle: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
-                          color:
-                              isSel ? const Color(0xFF1E60F2) : _subTextColor,
+                // Filter tabs: Tất cả, Đã duyệt, Chờ duyệt (Cuộn ngang tránh tràn màn hình)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: ['Tất cả', 'Đã duyệt', 'Chờ duyệt'].map((tab) {
+                      final isSel = _newsFilter == tab;
+                      final count = tab == 'Tất cả'
+                          ? allArticles.length
+                          : tab == 'Chờ duyệt'
+                              ? _pendingArticleTitles.length
+                              : allArticles.length -
+                                  _pendingArticleTitles.length;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text('$tab ($count)'),
+                          selected: isSel,
+                          onSelected: (_) => _setNewsFilter(tab),
+                          selectedColor:
+                              const Color(0xFF1E60F2).withOpacity(0.12),
+                          checkmarkColor: const Color(0xFF1E60F2),
+                          labelStyle: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight:
+                                isSel ? FontWeight.w700 : FontWeight.w500,
+                            color:
+                                isSel ? const Color(0xFF1E60F2) : _subTextColor,
+                          ),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
                         ),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ],
             ),
@@ -731,10 +792,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 height: 74,
                                 color: _borderColor,
                                 child: article.imageUrl != null
-                                    ? Image.network(
-                                        article.imageUrl!,
+                                    ? CachedNetworkImage(
+                                        imageUrl: article.imageUrl!,
+                                        memCacheWidth: 240,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
+                                        placeholder: (_, __) => const Center(
+                                          child: SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          ),
+                                        ),
+                                        errorWidget: (_, __, ___) =>
                                             const Icon(
                                           Icons.image_not_supported_outlined,
                                           color: Color(0xFF94A3B8),
@@ -806,15 +875,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 // Toggle status
                                 InkWell(
                                   onTap: () {
-                                    setState(() {
-                                      if (isPending) {
-                                        _pendingArticleTitles
-                                            .remove(article.title);
-                                      } else {
-                                        _pendingArticleTitles
-                                            .add(article.title);
-                                      }
-                                    });
+                                    _toggleApproval(article.title);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(isPending
@@ -897,11 +958,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                                     const Color(0xFFEF4444)),
                                             onPressed: () async {
                                               Navigator.pop(ctx);
-                                              news.removeArticle(article.title);
-                                              setState(() {
-                                                _pendingArticleTitles
-                                                    .remove(article.title);
-                                              });
+                                              await news.deleteArticlePermanently(article.title);
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                 const SnackBar(
@@ -1111,12 +1168,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       padding: const EdgeInsets.only(top: 8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          url,
+                        child: CachedNetworkImage(
+                          imageUrl: url,
                           height: 140,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          memCacheWidth: 600,
+                          errorWidget: (_, __, ___) => Container(
                             height: 60,
                             decoration: BoxDecoration(
                               color: const Color(0xFFFEF2F2),
@@ -1135,16 +1193,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                               ],
                             ),
                           ),
-                          loadingBuilder: (_, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              height: 140,
-                              color: _chipColor,
-                              child: const Center(
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2)),
-                            );
-                          },
+                          placeholder: (_, __) => Container(
+                            height: 140,
+                            color: _chipColor,
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
                         ),
                       ),
                     );
@@ -1308,7 +1363,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      titleCtrl.dispose();
+      subtitleCtrl.dispose();
+      descCtrl.dispose();
+      authorCtrl.dispose();
+      tagsCtrl.dispose();
+      inlineImagesCtrl.dispose();
+      imageUrlCtrl.dispose();
+      linkCtrl.dispose();
+    });
   }
 
   // Helper: label cho form
@@ -1352,12 +1416,137 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
+  void _showAddCategoryDialog(BuildContext context, NewsProvider news) {
+    final labelCtrl = TextEditingController();
+    final sourceCtrl = TextEditingController(text: 'VnExpress');
+    final urlCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.add_circle_outline_rounded, color: Color(0xFF1E60F2)),
+            SizedBox(width: 8),
+            Text('Thêm nguồn tin mới',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Tên chuyên mục (Ví dụ: Đời sống, Xe, Pháp luật):',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: labelCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Nhập tên chuyên mục...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Nguồn báo (Ví dụ: VnExpress, Tuổi Trẻ, Dân Trí):',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: sourceCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Tên tòa soạn / trang báo...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Đường dẫn RSS URL (Bắt đầu bằng https://):',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: urlCtrl,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  hintText: 'https://...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E60F2),
+              foregroundColor: Colors.white,
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              final label = labelCtrl.text.trim();
+              final source = sourceCtrl.text.trim();
+              final url = urlCtrl.text.trim();
+
+              if (label.isEmpty || url.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Vui lòng điền đầy đủ tên và đường dẫn RSS URL.')),
+                );
+                return;
+              }
+
+              if (!url.startsWith('https://')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text(
+                          'Đường dẫn RSS phải bắt đầu bằng https:// để đảm bảo bảo mật.')),
+                );
+                return;
+              }
+
+              Navigator.pop(ctx);
+              final success = await news.addCategory(
+                label: label,
+                rssUrl: url,
+                source: source.isEmpty ? 'Báo điện tử' : source,
+              );
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success
+                        ? 'Đã thêm nguồn tin "$label" thành công!'
+                        : 'Không thể thêm nguồn tin. Vui lòng kiểm tra lại URL.'),
+                    backgroundColor:
+                        success ? const Color(0xFF10B981) : Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Thêm nguồn'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ══════════════════════════════════════════════════════════════════
   // 3. TAB: QUẢN LÝ DANH MỤC THỰC TẾ (Lấy từ NewsService.categories)
   // ══════════════════════════════════════════════════════════════════
   Widget _buildCategoryManagementTab(NewsProvider news) {
     final categories = news.categories;
     final selectedCat = news.selectedCategory;
+    final selectedCatIds = news.selectedCategoryIds;
     final isLoading = news.status == NewsStatus.loading;
 
     // Map icon cho từng danh mục
@@ -1452,21 +1641,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${categories.length} danh mục RSS',
-                          style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: _textColor),
-                        ),
-                        Text('Chọn chuyên mục để ứng dụng hiển thị tin tức',
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Kết nối & Đồng bộ nguồn tin (${selectedCatIds.length}/${categories.length})',
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: _textColor),
+                          ),
+                          Text(
+                            'Bạn có thể tích chọn nhiều danh mục để gom tin tức từ nhiều nguồn cùng lúc',
                             style:
-                                TextStyle(fontSize: 12, color: _subTextColor)),
-                      ],
+                                TextStyle(fontSize: 12, color: _subTextColor),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     if (isLoading)
                       const SizedBox(
                         width: 24,
@@ -1481,7 +1676,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         decoration: BoxDecoration(
                             color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(10)),
-                        child: const Text('Nguồn: RSS',
+                        child: const Text('Nguồn: RSS Realtime',
                             style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.bold,
@@ -1489,36 +1684,124 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 12),
 
-                // ── Banner hướng dẫn ──
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16, top: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF86EFAC)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded,
-                          color: Color(0xFF16A34A), size: 18),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Nhấn "Chuyển sang" để ứng dụng tải và hiển thị tin tức từ chuyên mục đó.',
-                          style: TextStyle(
-                              fontSize: 12.5, color: Color(0xFF15803D)),
+                // ── Thanh tác vụ quản lý nguồn tin & chọn đa nguồn ──
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E60F2),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
                         ),
+                        icon: const Icon(Icons.add_circle_outline_rounded, size: 17),
+                        label: const Text(
+                          'Thêm nguồn mới',
+                          style: TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () => _showAddCategoryDialog(context, news),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          side: BorderSide(color: _borderColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.restore_rounded, size: 16),
+                        label: const Text(
+                          'Mặc định',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        onPressed: () async {
+                          await news.restoreDefaultCategories();
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Đã khôi phục danh sách nguồn tin mặc định'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          side: BorderSide(
+                              color: selectedCatIds.length == categories.length
+                                  ? const Color(0xFF1654F0)
+                                  : _borderColor),
+                          backgroundColor:
+                              selectedCatIds.length == categories.length
+                                  ? const Color(0xFF1654F0).withOpacity(0.08)
+                                  : _surfaceColor,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: Icon(
+                          selectedCatIds.length == categories.length
+                              ? Icons.check_circle_rounded
+                              : Icons.select_all_rounded,
+                          size: 17,
+                          color: const Color(0xFF1654F0),
+                        ),
+                        label: Text(
+                          selectedCatIds.length == categories.length
+                              ? 'Đang gom tất cả nguồn'
+                              : 'Chọn tất cả (${categories.length})',
+                          style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1654F0)),
+                        ),
+                        onPressed: () async {
+                          if (selectedCatIds.length == categories.length) {
+                            await news.selectCategory(categories.first);
+                          } else {
+                            await news.selectAllCategories();
+                          }
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                selectedCatIds.length == categories.length
+                                    ? 'Đã chọn đồng bộ tất cả chuyên mục!'
+                                    : 'Đã đưa về chuyên mục Mới nhất',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-                // ── Danh sách danh mục ──
+                // ── Danh sách danh mục với Checkbox Đa Lựa Chọn ──
                 ...categories.map((cat) {
-                  final isSelected = selectedCat.id == cat.id;
+                  final isChecked = selectedCatIds.contains(cat.id);
+                  final isPrimary = selectedCat.id == cat.id;
                   final color = catColor(cat.id);
 
                   return AnimatedContainer(
@@ -1526,13 +1809,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
                       color:
-                          isSelected ? color.withOpacity(0.06) : _surfaceColor,
+                          isChecked ? color.withOpacity(0.06) : _surfaceColor,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? color : _borderColor,
-                        width: isSelected ? 1.8 : 1.0,
+                        color: isChecked ? color : _borderColor,
+                        width: isChecked ? 1.8 : 1.0,
                       ),
-                      boxShadow: isSelected
+                      boxShadow: isChecked
                           ? [
                               BoxShadow(
                                   color: color.withOpacity(0.12),
@@ -1549,20 +1832,32 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () async {
-                        await news.selectCategory(cat);
+                        // Tích chọn hoặc bỏ chọn đa chuyên mục
+                        await news.toggleCategory(cat);
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Row(
                               children: [
-                                const Icon(Icons.check_circle_rounded,
-                                    color: Colors.white, size: 18),
+                                Icon(
+                                  news.selectedCategoryIds.contains(cat.id)
+                                      ? Icons.check_circle_rounded
+                                      : Icons.remove_circle_outline_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 8),
-                                Text(
-                                    'Đã chuyển sang chuyên mục "${cat.label}"'),
+                                Expanded(
+                                  child: Text(
+                                    news.selectedCategoryIds.contains(cat.id)
+                                        ? 'Đã bật kết nối "${cat.label}"'
+                                        : 'Đã tắt kết nối "${cat.label}"',
+                                  ),
+                                ),
                               ],
                             ),
                             backgroundColor: color,
+                            duration: const Duration(seconds: 1),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
@@ -1575,20 +1870,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           children: [
                             // Icon danh mục
                             Container(
-                              width: 48,
-                              height: 48,
+                              width: 46,
+                              height: 46,
                               decoration: BoxDecoration(
                                 color:
-                                    isSelected ? color : color.withOpacity(0.1),
+                                    isChecked ? color : color.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(catIcon(cat.id),
-                                  color: isSelected ? Colors.white : color,
-                                  size: 24),
+                                  color: isChecked ? Colors.white : color,
+                                  size: 22),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 12),
 
-                            // Thông tin
+                            // Thông tin danh mục
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1600,11 +1895,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 15,
-                                          color:
-                                              isSelected ? color : _textColor,
+                                          color: isChecked ? color : _textColor,
                                         ),
                                       ),
-                                      if (isSelected) ...[
+                                      if (isChecked) ...[
                                         const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
@@ -1613,8 +1907,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                               color: color,
                                               borderRadius:
                                                   BorderRadius.circular(6)),
-                                          child: const Text('ĐANG HIỂN THỊ',
-                                              style: TextStyle(
+                                          child: Text(
+                                              isPrimary
+                                                  ? 'CHÍNH'
+                                                  : 'ĐÃ KẾT NỐI',
+                                              style: const TextStyle(
                                                   fontSize: 9,
                                                   fontWeight: FontWeight.bold,
                                                   color: Colors.white)),
@@ -1627,7 +1924,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                     cat.source,
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: isSelected
+                                        color: isChecked
                                             ? color.withOpacity(0.8)
                                             : _subTextColor,
                                         fontWeight: FontWeight.w500),
@@ -1637,40 +1934,71 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                        fontSize: 11, color: Color(0xFFCBD5E1)),
+                                        fontSize: 11, color: Color(0xFF94A3B8)),
                                   ),
                                 ],
                               ),
                             ),
 
-                            // Nút chọn / đang chọn
-                            const SizedBox(width: 10),
-                            isSelected
-                                ? Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: color,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.check_rounded,
-                                        color: Colors.white, size: 18),
-                                  )
-                                : Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: color.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      'Chuyển',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: color),
-                                    ),
+                            // Nút xóa nguồn tin
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: Color(0xFFEF4444), size: 20),
+                              tooltip: 'Xóa nguồn này',
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16)),
+                                    title: const Text('Xác nhận xóa nguồn tin',
+                                        style: TextStyle(fontWeight: FontWeight.bold)),
+                                    content: Text(
+                                        'Bạn có chắc muốn xóa nguồn tin "${cat.label}" (${cat.source}) khỏi hệ thống không?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Hủy'),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFFEF4444)),
+                                        onPressed: () async {
+                                          Navigator.pop(ctx);
+                                          await news.deleteCategory(cat.id);
+                                          if (!mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Đã xóa nguồn tin "${cat.label}"'),
+                                              backgroundColor: Colors.red,
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Xóa nguồn',
+                                            style: TextStyle(color: Colors.white)),
+                                      ),
+                                    ],
                                   ),
+                                );
+                              },
+                            ),
+
+                            // Checkbox trực quan
+                            const SizedBox(width: 4),
+                            Transform.scale(
+                              scale: 1.1,
+                              child: Checkbox(
+                                value: isChecked,
+                                activeColor: color,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                onChanged: (val) async {
+                                  await news.toggleCategory(cat);
+                                },
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1806,15 +2134,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline_rounded,
+                  const Icon(Icons.info_outline_rounded,
                       color: Color(0xFF1E60F2), size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Quản lý người dùng Firebase Auth',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _textColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Quản lý người dùng Firebase Auth',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: _textColor),
+                    ),
                   ),
                 ],
               ),
@@ -1850,15 +2180,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.campaign_rounded,
+                  const Icon(Icons.campaign_rounded,
                       color: Color(0xFF1654F0), size: 26),
-                  SizedBox(width: 8),
-                  Text(
-                    'Phát sóng thông báo ứng dụng',
-                    style: TextStyle(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w800,
-                        color: _textColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Phát sóng thông báo ứng dụng',
+                      style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w800,
+                          color: _textColor),
+                    ),
                   ),
                 ],
               ),
@@ -1886,8 +2218,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
                       fontSize: 12.5,
                     ),
-                    onSelected: (_) =>
-                        setState(() => _selectedNotifType = type),
+                    onSelected: (_) => _setSelectedNotifType(type),
                   );
                 }).toList(),
               ),
@@ -2024,18 +2355,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       return;
                     }
 
-                    final now = DateTime.now();
-                    setState(() {
-                      _broadcastNotifications.insert(0, {
-                        'title': _notifTitleController.text.trim(),
-                        'body': _notifBodyController.text.trim(),
-                        'type': _selectedNotifType,
-                        'sentTime':
-                            '${now.hour}:${now.minute < 10 ? '0' : ''}${now.minute}',
-                      });
-                      _notifTitleController.clear();
-                      _notifBodyController.clear();
-                    });
+                    _broadcastNotification(
+                      _notifTitleController.text.trim(),
+                      _notifBodyController.text.trim(),
+                      _selectedNotifType,
+                    );
+                    _notifTitleController.clear();
+                    _notifBodyController.clear();
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -2110,7 +2436,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   // 6. TAB: THỐNG KÊ & BÁO CÁO THỰC TẾ (Tính toán trực tiếp từ dữ liệu)
   // ══════════════════════════════════════════════════════════════════
   Widget _buildReportStatisticsTab(NewsProvider news, FavoritesProvider fav) {
-    final articles = news.articles;
+    final articles = news.allArticles;
     final total = articles.length;
 
     // Đếm số bài thực tế theo nguồn báo
@@ -2152,13 +2478,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Phân bổ nguồn báo thực tế',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _textColor),
+                  Expanded(
+                    child: Text(
+                      'Phân bổ nguồn báo thực tế',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _textColor),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text('Tổng $total bài',
                       style: const TextStyle(
                           fontSize: 12,
@@ -2296,11 +2626,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title,
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _subTextColor)),
+              Expanded(
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _subTextColor)),
+              ),
+              const SizedBox(width: 4),
               Icon(icon, color: color, size: 20),
             ],
           ),
@@ -2343,11 +2678,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title,
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: color)),
+              Expanded(
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: color)),
+              ),
+              const SizedBox(width: 4),
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: const BoxDecoration(
@@ -2365,6 +2705,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   letterSpacing: -0.5)),
           const SizedBox(height: 4),
           Text(subText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,

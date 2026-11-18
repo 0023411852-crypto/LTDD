@@ -13,26 +13,49 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
+    with TickerProviderStateMixin {
+  late AnimationController _fadeCtrl;
+  late AnimationController _pulseCtrl;
   late Animation<double> _fadeAnim;
+  late Animation<double> _scaleAnim;
+  late Animation<double> _pulseAnim;
+  Timer? _navTimer;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _ctrl.forward();
 
-    Timer(const Duration(milliseconds: 2400), () {
+    _fadeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
+    _scaleAnim = Tween<double>(begin: 0.88, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutBack),
+    );
+
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOutSine),
+    );
+
+    _fadeCtrl.forward();
+
+    _navTimer = Timer(const Duration(milliseconds: 1800), () {
       if (!mounted) return;
       final auth = context.read<AuthProvider>();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) =>
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) =>
               auth.isAuthenticated ? const MainNavScreen() : const LoginScreen(),
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 500),
         ),
       );
     });
@@ -40,101 +63,260 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _navTimer?.cancel();
+    _fadeCtrl.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgGradient = isDark
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF090D16),
+              Color(0xFF0F172A),
+              Color(0xFF1E293B),
+            ],
+          )
+        : const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0F172A),
+              Color(0xFF1E3A8A),
+              Color(0xFF2563EB),
+            ],
+          );
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              cs.primary,
-              cs.primary.withOpacity(0.78),
-              cs.surface,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: const [0, 0.42, 1],
-          ),
-        ),
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SafeArea(
-            child: Column(
-              children: [
-              const Spacer(flex: 2),
-              // Logo
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Image.asset(
-                    'assets/images/app_icon.jpg',
-                    height: 96,
-                    width: 96,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 96,
-                      width: 96,
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer,
-                        borderRadius: BorderRadius.circular(24),
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(gradient: bgGradient),
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnim,
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              child: Column(
+                children: [
+                  const Spacer(flex: 3),
+
+                  // Animated Glowing Logo
+                  Center(
+                    child: AnimatedBuilder(
+                      animation: _pulseAnim,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnim.value,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF38BDF8).withOpacity(0.35),
+                                  blurRadius: 40,
+                                  spreadRadius: 8,
+                                ),
+                                BoxShadow(
+                                  color: const Color(0xFF6366F1).withOpacity(0.25),
+                                  blurRadius: 60,
+                                  spreadRadius: 15,
+                                ),
+                              ],
+                            ),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 2,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(32),
+                          child: Image.asset(
+                            'assets/images/app_icon.jpg',
+                            height: 104,
+                            width: 104,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              height: 104,
+                              width: 104,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF2563EB), Color(0xFF06B6D4)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(32),
+                              ),
+                              child: const Icon(
+                                Icons.newspaper_rounded,
+                                color: Colors.white,
+                                size: 54,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      child: Icon(Icons.newspaper_rounded,
-                          color: cs.primary, size: 48),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Tin tức & Thời tiết',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+
+                  const SizedBox(height: 28),
+
+                  // App Name with modern typography
+                  const Text(
+                    'DAILY PORTAL',
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
+                      fontSize: 28,
+                      letterSpacing: 2.0,
                     ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Cập nhật mỗi ngày',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.primary,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Tagline
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.bolt_rounded,
+                              size: 15,
+                              color: Color(0xFFFBBF24),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Tin tức & Khí hậu thời gian thực',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.95),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Spacer(flex: 3),
+
+                  // Modern Refreshing / Loading Card
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.15),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF38BDF8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Đang làm tươi dữ liệu...',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withOpacity(0.9),
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: const LinearProgressIndicator(
+                            minHeight: 4,
+                            backgroundColor: Colors.white12,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF38BDF8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Version Tag
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.08),
+                      ),
+                    ),
+                    child: Text(
+                      'Phiên bản 1.1.0 • Build 2',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withOpacity(0.7),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Stay informed • Stay prepared',
-                style: TextStyle(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(flex: 2),
-              // Loading bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: LinearProgressIndicator(
-                  backgroundColor: cs.outlineVariant,
-                  color: cs.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Phiên bản 1.0.0',
-                style:
-                    TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: 32),
-              ],
             ),
           ),
         ),

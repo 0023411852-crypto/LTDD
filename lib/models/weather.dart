@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 class Weather {
   final String cityName;
   final double temperature;
@@ -38,47 +40,66 @@ class Weather {
     };
   }
 
+  /// Factory parser complying with Specmatic / Cohesion contract resilience
   factory Weather.fromOpenMeteo(Map<String, dynamic> json, String cityName) {
-    final current = json['current'] as Map<String, dynamic>;
-    final dailyJson = json['daily'] as Map<String, dynamic>;
-    final times = (dailyJson['time'] as List).cast<String>();
-    final maxs = (dailyJson['temperature_2m_max'] as List).cast<num>();
-    final mins = (dailyJson['temperature_2m_min'] as List).cast<num>();
-    final codes = (dailyJson['weather_code'] as List).cast<num>();
+    final current = (json['current'] as Map<String, dynamic>?) ?? const {};
+    final dailyJson = (json['daily'] as Map<String, dynamic>?) ?? const {};
+
+    final rawTimes = dailyJson['time'] as List<dynamic>? ?? const [];
+    final rawMaxs = dailyJson['temperature_2m_max'] as List<dynamic>? ?? const [];
+    final rawMins = dailyJson['temperature_2m_min'] as List<dynamic>? ?? const [];
+    final rawCodes = dailyJson['weather_code'] as List<dynamic>? ?? const [];
+
+    final dailyCount = math.min(
+      rawTimes.length,
+      math.min(rawMaxs.length, math.min(rawMins.length, rawCodes.length)),
+    );
+
+    final List<DailyForecast> dailyList = [];
+    for (int i = 0; i < dailyCount; i++) {
+      final parsedDate = DateTime.tryParse(rawTimes[i]?.toString() ?? '');
+      if (parsedDate != null) {
+        dailyList.add(DailyForecast(
+          date: parsedDate,
+          tempMax: (rawMaxs[i] as num?)?.toDouble() ?? 0.0,
+          tempMin: (rawMins[i] as num?)?.toDouble() ?? 0.0,
+          weatherCode: (rawCodes[i] as num?)?.toInt() ?? 0,
+        ));
+      }
+    }
 
     final List<HourlyForecast> hourlyList = [];
-    if (json['hourly'] != null) {
+    if (json['hourly'] is Map<String, dynamic>) {
       final hourlyJson = json['hourly'] as Map<String, dynamic>;
-      final hTimes = (hourlyJson['time'] as List).cast<String>();
-      final hTemps = (hourlyJson['temperature_2m'] as List).cast<num>();
-      final hCodes = (hourlyJson['weather_code'] as List).cast<num>();
-      // Chỉ lấy 24 giờ tiếp theo
-      final count = hTimes.length > 24 ? 24 : hTimes.length;
-      for (int i = 0; i < count; i++) {
-        hourlyList.add(HourlyForecast(
-          time: DateTime.parse(hTimes[i]),
-          temperature: hTemps[i].toDouble(),
-          weatherCode: hCodes[i].toInt(),
-        ));
+      final hTimes = hourlyJson['time'] as List<dynamic>? ?? const [];
+      final hTemps = hourlyJson['temperature_2m'] as List<dynamic>? ?? const [];
+      final hCodes = hourlyJson['weather_code'] as List<dynamic>? ?? const [];
+
+      final hourlyCount = math.min(
+        math.min(hTimes.length, hTemps.length),
+        math.min(hCodes.length, 24),
+      );
+
+      for (int i = 0; i < hourlyCount; i++) {
+        final parsedTime = DateTime.tryParse(hTimes[i]?.toString() ?? '');
+        if (parsedTime != null) {
+          hourlyList.add(HourlyForecast(
+            time: parsedTime,
+            temperature: (hTemps[i] as num?)?.toDouble() ?? 0.0,
+            weatherCode: (hCodes[i] as num?)?.toInt() ?? 0,
+          ));
+        }
       }
     }
 
     return Weather(
       cityName: cityName,
-      temperature: (current['temperature_2m'] as num).toDouble(),
-      feelsLike: (current['apparent_temperature'] as num).toDouble(),
-      humidity: (current['relative_humidity_2m'] as num).toInt(),
-      windSpeed: (current['wind_speed_10m'] as num).toDouble(),
-      weatherCode: (current['weather_code'] as num).toInt(),
-      daily: List.generate(
-        times.length,
-        (i) => DailyForecast(
-          date: DateTime.parse(times[i]),
-          tempMax: maxs[i].toDouble(),
-          tempMin: mins[i].toDouble(),
-          weatherCode: codes[i].toInt(),
-        ),
-      ),
+      temperature: (current['temperature_2m'] as num?)?.toDouble() ?? 0.0,
+      feelsLike: (current['apparent_temperature'] as num?)?.toDouble() ?? 0.0,
+      humidity: (current['relative_humidity_2m'] as num?)?.toInt() ?? 0,
+      windSpeed: (current['wind_speed_10m'] as num?)?.toDouble() ?? 0.0,
+      weatherCode: (current['weather_code'] as num?)?.toInt() ?? 0,
+      daily: dailyList,
       hourly: hourlyList,
     );
   }

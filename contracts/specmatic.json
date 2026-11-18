@@ -1,0 +1,13 @@
+{
+  "sources": [
+    {
+      "test": ["contracts/openapi.yaml"],
+      "stub": ["contracts/openapi.yaml"]
+    }
+  ],
+  "contract": {
+    "version": "3.0.3",
+    "title": "Daily News & Weather Portal Backend-Frontend Contract",
+    "description": "Formal contract definition for Open-Meteo, Firebase RTDB, and RSS feeds"
+  }
+}

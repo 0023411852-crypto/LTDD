@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/article.dart';
@@ -14,6 +15,7 @@ import '../../search/presentation/search_screen.dart';
 import '../../weather/presentation/weather_screen.dart';
 import '../../weather/presentation/widgets/animated_weather_visual.dart';
 import '../../weather/providers/weather_provider.dart';
+import '../providers/home_provider.dart';
 
 /// Màn hình Trang Chủ (Home Screen) cao cấp:
 /// - Thẻ Thời Tiết Gradient kính mờ đồng bộ thời gian thực.
@@ -39,7 +41,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final PageController _featuredPageController;
-  int _currentFeaturedPage = 0;
 
   @override
   void initState() {
@@ -65,6 +66,28 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isDaytime {
     final hour = DateTime.now().hour;
     return hour >= 6 && hour < 18;
+  }
+
+  String _getFormattedHeaderDate() {
+    final now = DateTime.now();
+    const weekdays = [
+      'Thứ Hai',
+      'Thứ Ba',
+      'Thứ Tư',
+      'Thứ Năm',
+      'Thứ Sáu',
+      'Thứ Bảy',
+      'Chủ Nhật'
+    ];
+    final weekday = weekdays[now.weekday - 1];
+    return '$weekday, ${now.day} thg ${now.month}';
+  }
+
+  String _getGreetingTimeOfDay() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'CHÀO BUỔI SÁNG';
+    if (hour >= 12 && hour < 18) return 'CHÀO BUỔI CHIỀU';
+    return 'CHÀO BUỔI TỐI';
   }
 
   void _showCityPicker(BuildContext context, WeatherProvider weatherProvider) {
@@ -102,6 +125,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  tileColor: const Color(0xFF1E60F2).withOpacity(0.08),
+                  leading: const Icon(
+                    Icons.my_location_rounded,
+                    color: Color(0xFF1E60F2),
+                  ),
+                  title: const Text(
+                    'Định vị vị trí hiện tại của bạn',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E60F2),
+                      fontSize: 14.5,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Tự động xác định Xã/Phường, Quận/Huyện qua GPS',
+                    style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await weatherProvider.useCurrentLocation();
+                  },
+                ),
+              ),
+              const SizedBox(height: 6),
               Flexible(
                 child: ListView.builder(
                   shrinkWrap: true,
@@ -131,10 +184,33 @@ class _HomeScreenState extends State<HomeScreen> {
                               : textColor,
                         ),
                       ),
-                      trailing: isSelected
-                          ? const Icon(Icons.check_circle_rounded,
-                              color: Color(0xFF1E60F2))
-                          : null,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Consumer<FavoritesProvider>(
+                            builder: (context, fav, _) {
+                              final isFav = fav.isFavoriteCity(city);
+                              return IconButton(
+                                icon: Icon(
+                                  isFav
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  color: isFav
+                                      ? const Color(0xFFEF4444)
+                                      : Colors.grey.shade400,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  fav.toggleFavoriteCity(city);
+                                },
+                              );
+                            },
+                          ),
+                          if (isSelected)
+                            const Icon(Icons.check_circle_rounded,
+                                color: Color(0xFF1E60F2)),
+                        ],
+                      ),
                       onTap: () {
                         weatherProvider.selectCity(city);
                         Navigator.pop(ctx);
@@ -155,8 +231,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final newsProvider = context.watch<NewsProvider>();
     final weatherProvider = context.watch<WeatherProvider>();
-    final authProvider = context.watch<AuthProvider>();
-    final favoritesProvider = context.watch<FavoritesProvider>();
     final weather = weatherProvider.weather;
     final articles = newsProvider.articles;
 
@@ -174,297 +248,248 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Article> latestArticles =
         articles.length > 5 ? articles.skip(5).toList() : articles;
 
-    final userName = authProvider.isAuthenticated
-        ? authProvider.displayName.split(' ').last
-        : '';
+    final userName = context.select<AuthProvider, String>(
+      (auth) => auth.isAuthenticated ? auth.displayName.split(' ').last : '',
+    );
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: Stack(
-        children: [
-          // Nền ambient mờ ảo
-          Positioned.fill(
-            child: IgnorePointer(
-              child: RepaintBoundary(
-                child: _HomeAmbientBackground(isDark: isDark),
-              ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: const Color(0xFF2563EB),
+          onRefresh: () async {
+            await Future.wait([
+              newsProvider.fetchNews(),
+              weatherProvider.fetchWeather(),
+            ]);
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
             ),
-          ),
-
-          // Lớp ánh sáng phát quang nhẹ ở các góc
-          Positioned(
-            top: -60,
-            right: -40,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: (isDark ? const Color(0xFF1E40AF) : const Color(0xFF93C5FD))
-                    .withOpacity(0.35),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-          ),
-
-          // NỘI DUNG CUỘN CHÍNH
-          SafeArea(
-            child: RefreshIndicator(
-              color: const Color(0xFF2563EB),
-              onRefresh: () async {
-                await Future.wait([
-                  newsProvider.fetchNews(),
-                  weatherProvider.fetchWeather(),
-                ]);
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
+            slivers: [
+              SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
 
-                    // 1. TOP BAR: LOGO + NÚT TÌM KIẾM & THÔNG BÁO
-                    _buildTopHeader(context, isDark, textColor, subTextColor),
-                    const SizedBox(height: 16),
+                      // 1. TOP BAR: LOGO + NÚT TÌM KIẾM & THÔNG BÁO
+                      _buildTopHeader(context, isDark, textColor, subTextColor),
+                      const SizedBox(height: 16),
 
-                    // 2. LỜI CHÀO NGÀY MỚI
-                    Text(
-                      userName.isNotEmpty
-                          ? 'Xin chào, $userName! 👋'
-                          : 'Xin chào bạn! 👋',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: textColor,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Khám phá tin tức & thời tiết hôm nay',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        color: subTextColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // 3. THẺ THỜI TIẾT MINI GLASSMORPHISM
-                    _buildWeatherHeroCard(
-                      context: context,
-                      weather: weather,
-                      weatherProvider: weatherProvider,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // 4. MỤC "TIN NỔI BẬT" - CAROUSEL SLIDER HIỆN ĐẠI
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2563EB),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Tin nổi bật',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: textColor,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                        GestureDetector(
-                          onTap: widget.onNavigateToNews,
-                          child: const Text(
-                            'Xem tất cả >',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+                      // 2. LỜI CHÀO NGÀY MỚI (CHUẨN EDITORIAL JOURNALISM)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getGreetingTimeOfDay(),
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
                               color: Color(0xFF2563EB),
+                              letterSpacing: 1.0,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Slider Tin Nổi Bật
-                    _buildFeaturedCarousel(
-                      context: context,
-                      featuredArticles: featuredArticles,
-                      isLoading: newsProvider.status == NewsStatus.loading,
-                      favoritesProvider: favoritesProvider,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // 5. MỤC "CHUYÊN MỤC" - THANH CHIP CUỘN NGANG
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0284C7),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
+                          const SizedBox(height: 3),
+                          Text(
+                            userName.isNotEmpty
+                                ? 'Bản tin của $userName'
+                                : 'Điểm tin & Khí hậu',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: textColor,
+                              letterSpacing: -0.6,
+                              height: 1.2,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Chuyên mục',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: textColor,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildCategoryPillsBar(
-                      newsProvider: newsProvider,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // 6. MỤC "TIN MỚI NHẤT" - EDITORIAL MAGAZINE FEED
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEA580C),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Tin mới nhất',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: textColor,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '${latestArticles.length} bài viết',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: subTextColor,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
 
-                    if (newsProvider.status == NewsStatus.loading &&
-                        articles.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF2563EB),
+                      // 3. THẺ THỜI TIẾT MINI GLASSMORPHISM
+                      _buildWeatherHeroCard(
+                        context: context,
+                        weather: weather,
+                        weatherProvider: weatherProvider,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 4. MỤC "TIN TIÊU ĐIỂM" - CAROUSEL SLIDER
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Tin tiêu điểm',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              color: textColor,
+                              letterSpacing: -0.4,
+                            ),
                           ),
-                        ),
-                      )
-                    else if (latestArticles.isEmpty && featuredArticles.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 36),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Icon(Icons.feed_outlined,
-                                  size: 46, color: subTextColor),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Không có tin tức nào trong danh mục này',
+                          GestureDetector(
+                            onTap: widget.onNavigateToNews,
+                            child: const Padding(
+                              padding: EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                'Xem tất cả',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Hãy kéo xuống để tải lại hoặc chọn danh mục khác.',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: subTextColor,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Slider Tin Nổi Bật
+                      _buildFeaturedCarousel(
+                        context: context,
+                        featuredArticles: featuredArticles,
+                        isLoading: newsProvider.status == NewsStatus.loading,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 5. MỤC "CHUYÊN MỤC"
+                      Text(
+                        'Chuyên mục',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          color: textColor,
+                          letterSpacing: -0.4,
                         ),
-                      )
-                    else
-                      ...List.generate(latestArticles.length, (index) {
-                        final article = latestArticles[index];
-                        // Cứ mỗi 4 bài thì hiển thị 1 thẻ đặc sắc khổ lớn (Full-width card)
-                        final isFeatureLayout = index > 0 && index % 4 == 0;
+                      ),
+                      const SizedBox(height: 12),
 
-                        if (isFeatureLayout) {
-                          return _buildWideMagazineCard(
-                            context: context,
-                            article: article,
-                            cardBg: cardBg,
-                            borderColor: borderColor,
-                            textColor: textColor,
-                            subTextColor: subTextColor,
-                            favoritesProvider: favoritesProvider,
-                          );
-                        }
+                      _buildCategoryPillsBar(
+                        newsProvider: newsProvider,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 24),
 
-                        return _buildStandardNewsCard(
+                      // 6. MỤC "MỚI CẬP NHẬT" - EDITORIAL MAGAZINE FEED
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Mới cập nhật',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              color: textColor,
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              '${latestArticles.length} bài viết',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: subTextColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+
+              // 7. DANH SÁCH BÀI BÁO ẢO HÓA (SLIVER VIRTUALIZATION - 60/120 FPS)
+              if (newsProvider.status == NewsStatus.loading && articles.isEmpty)
+                const SliverPadding(
+                  padding: EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ),
+                )
+              else if (latestArticles.isEmpty && featuredArticles.isEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.feed_outlined,
+                              size: 46, color: subTextColor),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Không có tin tức nào trong danh mục này',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Hãy kéo xuống để tải lại hoặc chọn danh mục khác.',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: subTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList.builder(
+                    itemCount: latestArticles.length,
+                    itemBuilder: (context, index) {
+                      final article = latestArticles[index];
+                      // Cứ mỗi 4 bài thì hiển thị 1 thẻ đặc sắc khổ lớn (Full-width card)
+                      final isFeatureLayout = index > 0 && index % 4 == 0;
+
+                      if (isFeatureLayout) {
+                        return _buildWideMagazineCard(
                           context: context,
                           article: article,
                           cardBg: cardBg,
                           borderColor: borderColor,
                           textColor: textColor,
                           subTextColor: subTextColor,
-                          favoritesProvider: favoritesProvider,
                         );
-                      }),
-                    const SizedBox(height: 36),
-                  ],
+                      }
+
+                      return _buildStandardNewsCard(
+                        context: context,
+                        article: article,
+                        cardBg: cardBg,
+                        borderColor: borderColor,
+                        textColor: textColor,
+                        subTextColor: subTextColor,
+                      );
+                    },
+                  ),
                 ),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 36)),
+            ],
+          ),
             ),
           ),
-        ],
-      ),
     );
   }
 
@@ -478,57 +503,64 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2563EB), Color(0xFF38BDF8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2563EB).withOpacity(0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF38BDF8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withOpacity(0.35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.newspaper_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
-              child: const Icon(
-                Icons.newspaper_rounded,
-                color: Colors.white,
-                size: 20,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DAILY PORTAL',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: textColor,
+                        letterSpacing: 0.8,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _getFormattedHeaderDate(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: subTextColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tin tức & Thời tiết',
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                    color: textColor,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                Text(
-                  'Cổng tin tức trực tuyến 24/7',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: subTextColor,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         Row(
           children: [
             _buildFrostedIconButton(
@@ -600,15 +632,23 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 138,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2563EB), Color(0xFF0284C7), Color(0xFF38BDF8)],
+          gradient: LinearGradient(
+            colors: isDark
+                ? const [Color(0xFF0F172A), Color(0xFF1E293B)]
+                : (_isDaytime
+                    ? const [Color(0xFF1E3A8A), Color(0xFF0284C7)]
+                    : const [Color(0xFF0F172A), Color(0xFF1E3A8A)]),
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
+          border: Border.all(
+            color: Colors.white.withOpacity(isDark ? 0.12 : 0.22),
+            width: 1.1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF2563EB).withOpacity(0.35),
-              blurRadius: 20,
+              color: Colors.black.withOpacity(isDark ? 0.35 : 0.14),
+              blurRadius: 18,
               offset: const Offset(0, 8),
             ),
           ],
@@ -634,95 +674,108 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: () => _showCityPicker(context, weatherProvider),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.22),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.35),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () => _showCityPicker(context, weatherProvider),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.22),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.35),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.location_on_rounded,
+                                      color: Colors.white, size: 14),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      weather?.cityName ??
+                                          weatherProvider.selectedCity.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(Icons.keyboard_arrow_down_rounded,
+                                      color: Colors.white, size: 15),
+                                ],
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.location_on_rounded,
-                                    color: Colors.white, size: 14),
-                                const SizedBox(width: 4),
-                                Text(
-                                  weather?.cityName ??
-                                      weatherProvider.selectedCity.name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                weather != null
+                                    ? '${weather.temperature.round()}'
+                                    : '--',
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -1.5,
+                                  height: 1.0,
+                                ),
+                              ),
+                              const Text(
+                                '°C',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  weather != null
+                                      ? '•  ${weather.description}'
+                                      : '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.95),
                                   ),
                                 ),
-                                const SizedBox(width: 2),
-                                const Icon(Icons.keyboard_arrow_down_rounded,
-                                    color: Colors.white, size: 15),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            weather != null
+                                ? 'Độ ẩm: ${weather.humidity}%  •  Gió: ${weather.windSpeed.round()} km/h'
+                                : 'Chạm để xem dự báo chi tiết',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.85),
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              weather != null
-                                  ? '${weather.temperature.round()}'
-                                  : '--',
-                              style: const TextStyle(
-                                fontSize: 40,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                letterSpacing: -1.5,
-                                height: 1.0,
-                              ),
-                            ),
-                            const Text(
-                              '°C',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white70,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              weather != null
-                                  ? '•  ${weather.description}'
-                                  : '',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withOpacity(0.95),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          weather != null
-                              ? 'Độ ẩm: ${weather.humidity}%  •  Gió: ${weather.windSpeed.round()} km/h'
-                              : 'Chạm để xem dự báo chi tiết',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.85),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 14),
                     AnimatedWeatherVisual(
                       weatherCode: weather?.weatherCode,
                       isDaytime: _isDaytime,
@@ -743,7 +796,6 @@ class _HomeScreenState extends State<HomeScreen> {
     required BuildContext context,
     required List<Article> featuredArticles,
     required bool isLoading,
-    required FavoritesProvider favoritesProvider,
     required bool isDark,
   }) {
     if (featuredArticles.isEmpty) {
@@ -787,13 +839,10 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _featuredPageController,
             itemCount: featuredArticles.length,
             onPageChanged: (page) {
-              setState(() {
-                _currentFeaturedPage = page;
-              });
+              context.read<HomeProvider>().setFeaturedPage(page);
             },
             itemBuilder: (context, index) {
               final article = featuredArticles[index];
-              final isFav = favoritesProvider.isFavorite(article);
 
               return GestureDetector(
                 onTap: () {
@@ -823,11 +872,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         // Ảnh bìa
                         if (article.imageUrl != null)
-                          Image.network(
-                            article.imageUrl!,
-                            cacheWidth: 800,
+                          CachedNetworkImage(
+                            imageUrl: article.imageUrl!,
+                            memCacheWidth: 800,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            placeholder: (_, __) =>
+                                _buildImagePlaceholder(article.source),
+                            errorWidget: (_, __, ___) =>
                                 _buildImagePlaceholder(article.source),
                           )
                         else
@@ -854,72 +905,70 @@ class _HomeScreenState extends State<HomeScreen> {
                           top: 14,
                           left: 14,
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                             child: BackdropFilter(
                               filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2563EB).withOpacity(0.85),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: Colors.black.withOpacity(0.55),
+                                  borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withOpacity(0.25),
+                                    width: 0.9,
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.bolt_rounded,
-                                        size: 14, color: Colors.yellow),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      article.source.isNotEmpty
-                                          ? article.source
-                                          : 'NỔI BẬT',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  article.source.isNotEmpty
+                                      ? article.source.toUpperCase()
+                                      : 'TIÊU ĐIỂM',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.6,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
 
-                        // Nút yêu thích góc trên bên phải
+                        // Nút yêu thích góc trên bên phải (Cô lập rebuild bằng Selector)
                         Positioned(
                           top: 10,
                           right: 10,
-                          child: InkWell(
-                            onTap: () => favoritesProvider.toggleFavorite(article),
-                            borderRadius: BorderRadius.circular(22),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.45),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.35),
+                          child: Selector<FavoritesProvider, bool>(
+                            selector: (_, fav) => fav.isFavorite(article),
+                            builder: (context, isFav, _) {
+                              return InkWell(
+                                onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                                borderRadius: BorderRadius.circular(22),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.45),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.35),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      isFav
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_border_rounded,
+                                      color: isFav
+                                          ? const Color(0xFFEF4444)
+                                          : Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  isFav
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  color: isFav
-                                      ? const Color(0xFFEF4444)
-                                      : Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                         ),
 
@@ -990,23 +1039,28 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 10),
 
         // Indicator Dots cho Slider
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(featuredArticles.length, (index) {
-            final isActive = index == _currentFeaturedPage;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: isActive ? 22 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? const Color(0xFF2563EB)
-                    : (isDark ? Colors.white24 : Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(3),
-              ),
+        Selector<HomeProvider, int>(
+          selector: (_, hp) => hp.currentFeaturedPage,
+          builder: (context, currentFeaturedPage, _) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(featuredArticles.length, (index) {
+                final isActive = index == currentFeaturedPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: isActive ? 22 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFF2563EB)
+                        : (isDark ? Colors.white24 : Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
             );
-          }),
+          },
         ),
       ],
     );
@@ -1039,13 +1093,10 @@ class _HomeScreenState extends State<HomeScreen> {
               curve: Curves.easeOutCubic,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF38BDF8)],
-                      )
-                    : null,
                 color: isSelected
-                    ? null
+                    ? (isDark
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFF1D4ED8))
                     : (isDark
                         ? const Color(0xFF1E293B)
                         : Colors.white),
@@ -1060,9 +1111,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: const Color(0xFF2563EB).withOpacity(0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
+                          color: const Color(0xFF1D4ED8).withOpacity(0.22),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
                       ]
                     : null,
@@ -1094,11 +1145,9 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color borderColor,
     required Color textColor,
     required Color subTextColor,
-    required FavoritesProvider favoritesProvider,
   }) {
-    final isFav = favoritesProvider.isFavorite(article);
-
     return InkWell(
+      key: ValueKey(article.link),
       onTap: () {
         Navigator.push(
           context,
@@ -1133,12 +1182,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 110,
                 height: 84,
                 child: article.imageUrl != null
-                    ? Image.network(
-                        article.imageUrl!,
-                        cacheWidth: 330,
-                        cacheHeight: 252,
+                    ? CachedNetworkImage(
+                        imageUrl: article.imageUrl!,
+                        memCacheWidth: 330,
+                        memCacheHeight: 252,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        placeholder: (_, __) =>
+                            _buildImagePlaceholder(article.source),
+                        errorWidget: (_, __, ___) =>
                             _buildImagePlaceholder(article.source),
                       )
                     : _buildImagePlaceholder(article.source),
@@ -1184,25 +1235,30 @@ class _HomeScreenState extends State<HomeScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Nút yêu thích
-                      InkWell(
-                        onTap: () => favoritesProvider.toggleFavorite(article),
-                        borderRadius: BorderRadius.circular(20),
-                        child: SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: Center(
-                            child: Icon(
-                              isFav
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: isFav
-                                  ? const Color(0xFFEF4444)
-                                  : subTextColor.withOpacity(0.7),
-                              size: 20,
+                      // Nút yêu thích (Cô lập rebuild bằng Selector)
+                      Selector<FavoritesProvider, bool>(
+                        selector: (_, fav) => fav.isFavorite(article),
+                        builder: (context, isFav, _) {
+                          return InkWell(
+                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                            borderRadius: BorderRadius.circular(20),
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Center(
+                                child: Icon(
+                                  isFav
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  color: isFav
+                                      ? const Color(0xFFEF4444)
+                                      : subTextColor.withOpacity(0.7),
+                                  size: 20,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -1238,11 +1294,9 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color borderColor,
     required Color textColor,
     required Color subTextColor,
-    required FavoritesProvider favoritesProvider,
   }) {
-    final isFav = favoritesProvider.isFavorite(article);
-
     return InkWell(
+      key: ValueKey(article.link),
       onTap: () {
         Navigator.push(
           context,
@@ -1276,11 +1330,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 155,
                 width: double.infinity,
                 child: article.imageUrl != null
-                    ? Image.network(
-                        article.imageUrl!,
-                        cacheWidth: 800,
+                    ? CachedNetworkImage(
+                        imageUrl: article.imageUrl!,
+                        memCacheWidth: 800,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        placeholder: (_, __) =>
+                            _buildImagePlaceholder(article.source),
+                        errorWidget: (_, __, ___) =>
                             _buildImagePlaceholder(article.source),
                       )
                     : _buildImagePlaceholder(article.source),
@@ -1322,24 +1378,30 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      InkWell(
-                        onTap: () => favoritesProvider.toggleFavorite(article),
-                        borderRadius: BorderRadius.circular(18),
-                        child: SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: Center(
-                            child: Icon(
-                              isFav
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: isFav
-                                  ? const Color(0xFFEF4444)
-                                  : subTextColor.withOpacity(0.7),
-                              size: 20,
+                      // Nút yêu thích (Cô lập rebuild bằng Selector)
+                      Selector<FavoritesProvider, bool>(
+                        selector: (_, fav) => fav.isFavorite(article),
+                        builder: (context, isFav, _) {
+                          return InkWell(
+                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                            borderRadius: BorderRadius.circular(18),
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Center(
+                                child: Icon(
+                                  isFav
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  color: isFav
+                                      ? const Color(0xFFEF4444)
+                                      : subTextColor.withOpacity(0.7),
+                                  size: 20,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -1443,82 +1505,4 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ── HIỆU ỨNG AMBIENT NỀN TRANG CHỦ ─────────────────────────────────────
-class _HomeAmbientBackground extends StatefulWidget {
-  final bool isDark;
 
-  const _HomeAmbientBackground({required this.isDark});
-
-  @override
-  State<_HomeAmbientBackground> createState() => _HomeAmbientBackgroundState();
-}
-
-class _HomeAmbientBackgroundState extends State<_HomeAmbientBackground>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 14),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return CustomPaint(
-          painter: _HomeAmbientPainter(
-            progress: reduceMotion ? 0.5 : _controller.value,
-            isDark: widget.isDark,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _HomeAmbientPainter extends CustomPainter {
-  final double progress;
-  final bool isDark;
-
-  const _HomeAmbientPainter({
-    required this.progress,
-    required this.isDark,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-    final glow = Paint()..style = PaintingStyle.fill;
-    final offset = math.sin(progress * math.pi * 2) * 32;
-
-    glow.color = (isDark ? const Color(0xFF2563EB) : const Color(0xFF93C5FD))
-        .withOpacity(isDark ? 0.10 : 0.13);
-    canvas.drawCircle(Offset(size.width * 0.78 + offset, 90), 170, glow);
-
-    glow.color = (isDark ? const Color(0xFF06B6D4) : const Color(0xFFBAE6FD))
-        .withOpacity(isDark ? 0.08 : 0.12);
-    canvas.drawCircle(
-      Offset(size.width * 0.12 - offset, size.height * 0.52),
-      145,
-      glow,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _HomeAmbientPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.isDark != isDark;
-  }
-}

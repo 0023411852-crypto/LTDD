@@ -2,19 +2,73 @@
   "rules": {
     "articles": {
       ".read": true,
+      ".indexOn": ["category", "publishedAt", "source"],
       "$articleId": {
-        ".write": "auth != null"
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['title', 'link', 'description', 'source'])",
+        "title": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+        },
+        "link": {
+          ".validate": "newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('http://'))"
+        },
+        "description": {
+          ".validate": "newData.isString() && newData.val().length <= 5000"
+        },
+        "source": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 150"
+        },
+        "imageUrl": {
+          ".validate": "!newData.exists() || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('http://')))"
+        },
+        "category": {
+          ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 100)"
+        },
+        "publishedAt": {
+          ".validate": "!newData.exists() || newData.isString() || newData.isNumber()"
+        },
+        "tags": {
+          ".validate": "!newData.exists() || newData.hasChildren()"
+        },
+        "$other": {
+          ".validate": true
+        }
       }
     },
     "users": {
       "$uid": {
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid",
+        "favorites": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid",
+          ".indexOn": ["link", "category"]
+        },
         "notifications": {
           ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid"
+          ".write": "$uid === auth.uid",
+          ".indexOn": ["createdAt", "isRead"],
+          "$notificationId": {
+            ".validate": "newData.hasChildren(['title', 'body', 'type', 'createdAt', 'isRead'])",
+            "title": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 300"
+            },
+            "body": {
+              ".validate": "newData.isString() && newData.val().length <= 2000"
+            },
+            "type": {
+              ".validate": "newData.isString()"
+            },
+            "createdAt": {
+              ".validate": "newData.isString() || newData.isNumber()"
+            },
+            "isRead": {
+              ".validate": "newData.isBoolean()"
+            }
+          }
         }
       }
     }
   }
 }
+
