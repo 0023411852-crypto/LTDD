@@ -47,8 +47,10 @@ class AuthProvider extends ChangeNotifier {
     return _isCustomAdminLoggedIn ? 'Quản trị viên Hệ thống' : 'Khách';
   }
 
+  static const String rootAdminEmail = 'admin@portal.com';
+
   String get email => _isCustomAdminLoggedIn
-      ? (_customUserEmail ?? 'admin@gmail.com')
+      ? (_customUserEmail ?? rootAdminEmail)
       : (_user?.email ?? '');
 
   String get uid =>
@@ -60,14 +62,13 @@ class AuthProvider extends ChangeNotifier {
   String get bio => _customUserBio ?? '';
 
   bool get isAdmin {
-    if (_isCustomAdminLoggedIn) return true;
-    final email = (_user?.email ?? _customUserEmail ?? '').toLowerCase();
+    if (_isCustomAdminLoggedIn) {
+      final customEmail = (_customUserEmail ?? '').trim().toLowerCase();
+      return customEmail == rootAdminEmail;
+    }
+    final email = (_user?.email ?? '').trim().toLowerCase();
     if (email.isEmpty) return false;
-    return email.contains('admin') ||
-        email == 'admin@portal.com' ||
-        email == 'admin@gmail.com' ||
-        email == 'linh@admin.com' ||
-        email.endsWith('@admin.portal');
+    return email == rootAdminEmail;
   }
 
   StreamSubscription<User?>? _authStateSubscription;
@@ -201,34 +202,12 @@ class AuthProvider extends ChangeNotifier {
     final normalizedEmail = email.trim().toLowerCase();
     final normalizedPassword = password.trim();
 
-    // 1. Tài khoản admin hệ thống phân quyền cao nhất
-    if ((normalizedEmail == 'admin@portal.com' || normalizedEmail == 'admin@gmail.com') &&
+    // 1. Tài khoản admin hệ thống phân quyền cao nhất DUY NHẤT
+    if (normalizedEmail == rootAdminEmail &&
         (normalizedPassword == 'admin123' ||
             normalizedPassword == 'Admin@123' ||
             normalizedPassword == 'Admin@123456')) {
-      return signInAsAdmin(email: normalizedEmail, name: 'Quản trị viên Hệ thống');
-    }
-
-    // 2. Tài khoản người dùng mẫu phân quyền thông thường (User role)
-    if ((normalizedEmail == 'user@portal.com' || normalizedEmail == 'user@gmail.com') &&
-        (normalizedPassword == 'user123' ||
-            normalizedPassword == 'User@123' ||
-            normalizedPassword == 'User@123456')) {
-      _customUserEmail = normalizedEmail;
-      _customUserName = 'Người Dùng Portal';
-      _customUserUid = 'usr_portal_demo';
-      _customUserPhone = '0912345678';
-      _isCustomAdminLoggedIn = false;
-      _status = AuthStatus.authenticated;
-      _errorMessage = '';
-      await _saveActiveSession(
-        normalizedEmail,
-        'Người Dùng Portal',
-        'usr_portal_demo',
-        isAdmin: false,
-      );
-      notifyListeners();
-      return true;
+      return signInAsAdmin(email: rootAdminEmail, name: 'Quản trị viên Hệ thống');
     }
 
     _status = AuthStatus.authenticating;
@@ -473,22 +452,13 @@ class AuthProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // Thêm tài khoản Admin và User mẫu mặc định nếu chưa có trong danh sách
-      if (!seenEmails.contains('admin@portal.com')) {
+      // Thêm tài khoản Admin hệ thống duy nhất nếu chưa có trong danh sách
+      if (!seenEmails.contains(rootAdminEmail)) {
         list.insert(0, {
-          'email': 'admin@portal.com',
+          'email': rootAdminEmail,
           'name': 'Quản trị viên Hệ thống',
           'uid': 'admin_root_sys',
           'isAdmin': true,
-          'hasPassword': true,
-        });
-      }
-      if (!seenEmails.contains('user@portal.com')) {
-        list.add({
-          'email': 'user@portal.com',
-          'name': 'Người Dùng Portal',
-          'uid': 'usr_portal_demo',
-          'isAdmin': false,
           'hasPassword': true,
         });
       }
@@ -522,7 +492,7 @@ class AuthProvider extends ChangeNotifier {
             _customUserEmail = normalized;
             _customUserName = map['name'] ?? name;
             _customUserUid = targetUid;
-            _isCustomAdminLoggedIn = normalized.contains('admin');
+            _isCustomAdminLoggedIn = (normalized == rootAdminEmail);
             _status = AuthStatus.authenticated;
             _errorMessage = '';
 
@@ -550,7 +520,7 @@ class AuthProvider extends ChangeNotifier {
       _customUserEmail = normalized;
       _customUserName = name;
       _customUserUid = newUid;
-      _isCustomAdminLoggedIn = normalized.contains('admin');
+      _isCustomAdminLoggedIn = (normalized == rootAdminEmail);
       _status = AuthStatus.authenticated;
       _errorMessage = '';
 
@@ -608,7 +578,7 @@ class AuthProvider extends ChangeNotifier {
               _customUserEmail = email;
               _customUserName = name;
               _customUserUid = uid;
-              _isCustomAdminLoggedIn = email.contains('admin');
+              _isCustomAdminLoggedIn = (email.trim().toLowerCase() == rootAdminEmail);
               _status = AuthStatus.authenticated;
               _errorMessage = '';
 
@@ -770,7 +740,7 @@ class AuthProvider extends ChangeNotifier {
       _customUserName = existingAccount?['name'] ?? name;
       _customUserPhotoUrl = photo ?? existingAccount?['photoUrl'];
       _customUserUid = unifiedUid;
-      _isCustomAdminLoggedIn = email.contains('admin');
+      _isCustomAdminLoggedIn = (email.trim().toLowerCase() == rootAdminEmail);
       _status = AuthStatus.authenticated;
       _errorMessage = '';
 

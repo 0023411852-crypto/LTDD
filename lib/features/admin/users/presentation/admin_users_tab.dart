@@ -207,7 +207,7 @@ class AdminUsersTab extends StatelessWidget {
                         final isGoogleLinked =
                             u['isGoogleLinked'] == true || u['googleId'] != null;
                         final isUserAdmin =
-                            u['isAdmin'] == true || uEmail.contains('admin');
+                            u['isAdmin'] == true || uEmail.trim().toLowerCase() == 'admin@portal.com';
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),

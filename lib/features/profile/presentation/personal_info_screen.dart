@@ -374,7 +374,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     TextFormField(
                       initialValue: auth.email.isNotEmpty
                           ? auth.email
-                          : 'admin@gmail.com',
+                          : 'admin@portal.com',
                       enabled: false,
                       style: TextStyle(color: subTextColor),
                       decoration: InputDecoration(
