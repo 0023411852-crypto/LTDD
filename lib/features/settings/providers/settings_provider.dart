@@ -68,8 +68,8 @@ class SettingsProvider extends ChangeNotifier {
         _fontScale = _getScaleForSize(savedFontSize);
       }
 
-      // Load language
-      _language = prefs.getString(_keyLanguage) ?? 'vi';
+      // Ngôn ngữ luôn mặc định Tiếng Việt
+      _language = 'vi';
 
       // Load notifications
       _breakingNewsNotif = prefs.getBool(_keyNotifBreaking) ?? true;

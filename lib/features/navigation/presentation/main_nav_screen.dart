@@ -35,11 +35,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final settings = context.read<SettingsProvider>();
-        NotificationPermissionService.promptOnFirstLaunch(
-          context,
-          isVi: settings.isVietnamese,
-        );
+        NotificationPermissionService.promptOnFirstLaunch(context);
       }
     });
   }
