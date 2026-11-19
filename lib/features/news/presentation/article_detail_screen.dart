@@ -285,7 +285,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 context: context,
               );
               if (!success || !context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(wasFav
                       ? 'Đã xóa khỏi mục Đã lưu'
@@ -299,7 +301,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Chia sẻ',
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
                 const SnackBar(
                   content: Text('Đã sao chép liên kết bài viết vào clipboard!'),
                   duration: Duration(seconds: 2),
@@ -517,7 +521,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   ),
                   IconButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      final messenger = ScaffoldMessenger.of(context);
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
                         const SnackBar(content: Text('Đã sao chép liên kết!')),
                       );
                     },

@@ -340,7 +340,9 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   void _showLoginRequiredPrompt(BuildContext context, String actionText) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -358,16 +360,20 @@ class FavoritesProvider extends ChangeNotifier {
           label: 'Đăng nhập',
           textColor: const Color(0xFF60A5FA),
           onPressed: () {
+            messenger.hideCurrentSnackBar();
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const LoginScreen()),
             );
           },
         ),
+        showCloseIcon: true,
+        closeIconColor: Colors.white70,
         backgroundColor: const Color(0xFF1E293B),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(milliseconds: 2200),
+        dismissDirection: DismissDirection.horizontal,
       ),
     );
   }

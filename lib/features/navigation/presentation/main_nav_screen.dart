@@ -94,6 +94,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 height: 68,
                 selectedIndex: currentIndex,
                 onDestinationSelected: (index) {
+                  ScaffoldMessenger.of(context).clearSnackBars();
                   nav.setIndex(index);
                 },
                 backgroundColor: Colors.transparent,

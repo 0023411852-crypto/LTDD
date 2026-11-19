@@ -105,7 +105,9 @@ class _WeatherScreenState extends State<WeatherScreen>
                   final wasFav = fav.isFavoriteCity(currentCity);
                   final success = await fav.toggleFavoriteCity(currentCity, context: context);
                   if (!success || !context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  final messenger = ScaffoldMessenger.of(context);
+                  messenger.clearSnackBars();
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
