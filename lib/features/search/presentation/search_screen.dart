@@ -229,8 +229,14 @@ class _SearchScreenState extends State<SearchScreen> {
                         title: Text(term,
                             style:
                                 TextStyle(fontSize: 14, color: cs.onSurface)),
-                        trailing: Icon(Icons.north_west_rounded,
-                            size: 16, color: cs.outline),
+                        trailing: IconButton(
+                          icon: Icon(Icons.close_rounded,
+                              size: 16, color: cs.outline),
+                          tooltip: 'Xóa mục này',
+                          onPressed: () => context
+                              .read<SearchProvider>()
+                              .removeHistoryItem(term),
+                        ),
                         onTap: () => _triggerSearch(term),
                       ),
                     );

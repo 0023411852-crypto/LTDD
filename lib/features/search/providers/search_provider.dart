@@ -83,6 +83,20 @@ class SearchProvider extends ChangeNotifier {
     }
   }
 
+  /// Xóa một mục cụ thể khỏi lịch sử tìm kiếm
+  Future<void> removeHistoryItem(String query) async {
+    final trimmed = query.trim();
+    if (_history.remove(trimmed)) {
+      notifyListeners();
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('search_history', _history);
+      } catch (e) {
+        debugPrint('SearchProvider.removeHistoryItem error: $e');
+      }
+    }
+  }
+
   /// Xóa sạch lịch sử tìm kiếm
   Future<void> clearHistory() async {
     _history.clear();
