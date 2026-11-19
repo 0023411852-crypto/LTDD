@@ -309,7 +309,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
                     child: Text(
-                      'Phiên bản 1.5.0',
+                      'Phiên bản 1.5.1',
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
