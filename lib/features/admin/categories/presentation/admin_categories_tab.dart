@@ -412,8 +412,61 @@ class AdminCategoriesTab extends StatelessWidget {
                                         fontSize: 11,
                                         color: Color(0xFF94A3B8)),
                                   ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1E60F2)
+                                              .withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          cat.maxArticles > 0
+                                              ? 'Tối đa: ${cat.maxArticles} bài'
+                                              : 'Không giới hạn tin',
+                                          style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Color(0xFF1E60F2),
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF10B981)
+                                              .withOpacity(0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          cat.retentionDays > 0
+                                              ? 'Lưu ${cat.retentionDays} ngày'
+                                              : 'Lưu vĩnh viễn',
+                                          style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Color(0xFF10B981),
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
+                            ),
+
+                            // Nút cấu hình nguồn (Số lượng & Thời gian lưu)
+                            IconButton(
+                              icon: const Icon(Icons.tune_rounded,
+                                  color: Color(0xFF1E60F2), size: 20),
+                              tooltip: 'Cấu hình số lượng & thời gian lưu',
+                              onPressed: () =>
+                                  _showSourceSettingsDialog(context, cat),
                             ),
 
                             // Nút xóa nguồn
@@ -654,6 +707,174 @@ class AdminCategoriesTab extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  /// Hộp thoại cấu hình số lượng tin tối đa và thời gian giữ lại bài viết cho từng nguồn
+  void _showSourceSettingsDialog(BuildContext context, NewsCategory cat) {
+    int maxArticles = cat.maxArticles;
+    int retentionDays = cat.retentionDays;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dialogBg = isDark ? const Color(0xFF141E33) : Colors.white;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setDialogState) => AlertDialog(
+          backgroundColor: dialogBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E60F2).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.tune_rounded, color: Color(0xFF1E60F2), size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cấu hình nguồn tin',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColor),
+                    ),
+                    Text(
+                      '${cat.label} (${cat.source})',
+                      style: TextStyle(fontSize: 12, color: subTextColor),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Số lượng tin bài tối đa
+                const Text(
+                  'Số lượng bài tối đa giữ lại:',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Giới hạn số lượng bài nạp từ nguồn này để tối ưu tốc độ và dung lượng',
+                  style: TextStyle(fontSize: 11.5, color: subTextColor),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    (15, '15 bài'),
+                    (30, '30 bài'),
+                    (50, '50 bài'),
+                    (100, '100 bài'),
+                    (0, 'Không giới hạn'),
+                  ].map((opt) {
+                    final isSel = maxArticles == opt.$1;
+                    return ChoiceChip(
+                      label: Text(opt.$2),
+                      selected: isSel,
+                      selectedColor: const Color(0xFF1E60F2),
+                      labelStyle: TextStyle(
+                        color: isSel ? Colors.white : textColor,
+                        fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 11.5,
+                      ),
+                      onSelected: (_) {
+                        setDialogState(() {
+                          maxArticles = opt.$1;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 18),
+
+                // 2. Thời gian giữ lại bài viết
+                const Text(
+                  'Thời gian giữ lại bài tin tức:',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Các bài báo cũ hơn số ngày này sẽ tự động được dọn dẹp khỏi nguồn',
+                  style: TextStyle(fontSize: 11.5, color: subTextColor),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    (1, '1 ngày'),
+                    (3, '3 ngày'),
+                    (7, '7 ngày'),
+                    (14, '14 ngày'),
+                    (30, '30 ngày'),
+                    (0, 'Lưu vĩnh viễn'),
+                  ].map((opt) {
+                    final isSel = retentionDays == opt.$1;
+                    return ChoiceChip(
+                      label: Text(opt.$2),
+                      selected: isSel,
+                      selectedColor: const Color(0xFF10B981),
+                      labelStyle: TextStyle(
+                        color: isSel ? Colors.white : textColor,
+                        fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 11.5,
+                      ),
+                      onSelected: (_) {
+                        setDialogState(() {
+                          retentionDays = opt.$1;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Hủy', style: TextStyle(color: subTextColor)),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1E60F2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text('Lưu cấu hình'),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await controller.updateCategorySettings(
+                  categoryId: cat.id,
+                  maxArticles: maxArticles,
+                  retentionDays: retentionDays,
+                );
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã cập nhật cấu hình cho nguồn "${cat.label}"!'),
+                    backgroundColor: const Color(0xFF10B981),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

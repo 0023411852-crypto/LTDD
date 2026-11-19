@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/article.dart';
+import '../../../services/breaking_news_detector_service.dart';
 import '../../../services/news_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../favorites/providers/favorites_provider.dart';
@@ -251,6 +252,32 @@ class _HomeScreenState extends State<HomeScreen> {
     final userName = context.select<AuthProvider, String>(
       (auth) => auth.isAuthenticated ? auth.displayName.split(' ').last : '',
     );
+
+    // =========================================================================
+    // [TỰ ĐỘNG PHÁT HIỆN & BÁO TIN NÓNG HOẶC THỜI TIẾT KHẨN CẤP]
+    // 
+    // [TÁC DỤNG]:
+    // Ngay sau khi nạp dữ liệu xong (postFrameCallback), hệ thống tự động chạy quét:
+    // 1. Phân tích tiêu đề các bài báo RSS mới nhất để phát hiện bão, thiên tai, hỏa hoạn...
+    // 2. Kiểm tra thông số thời tiết xem có dông lốc, mưa đá nguy hiểm hay không.
+    // 3. Nếu phát hiện sự kiện mới: tự động đẩy vào Tab Chuông thông báo và hiện
+    //    Banner nổi khẩn cấp kèm nút "Xem ngay" để người dùng không bỏ lỡ thông tin sống còn.
+    // =========================================================================
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (articles.isNotEmpty) {
+        BreakingNewsDetectorService.checkAndNotifyBreakingNews(
+          context: context,
+          articles: newsProvider.allArticles,
+        );
+      }
+      if (weather != null) {
+        BreakingNewsDetectorService.checkAndNotifyWeatherAlert(
+          context: context,
+          weather: weather,
+        );
+      }
+    });
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -550,6 +577,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       }
 
+                      // Tự động kiểm tra bài viết có phải là Tin nóng khẩn cấp hay không
+                      final isBreaking = BreakingNewsDetectorService.isBreakingArticle(article);
+                      final String? badge = isBreaking
+                          ? '🔴 TIN NÓNG'
+                          : (index == 0 ? '🔥 NỔI BẬT' : (index == 1 ? '⚡ MỚI' : null));
+
                       return _buildStandardNewsCard(
                         context: context,
                         article: article,
@@ -557,7 +590,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderColor: borderColor,
                         textColor: textColor,
                         subTextColor: subTextColor,
-                        badgeText: index == 0 ? '🔥 NỔI BẬT' : (index == 1 ? '⚡ MỚI' : null),
+                        badgeText: badge,
                       );
                     },
                   ),
@@ -1001,38 +1034,77 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
 
-                        // Tag chuyên mục & Nguồn báo góc trên
+                        // Tag chuyên mục & Nguồn báo hoặc Tag TIN NÓNG góc trên
                         Positioned(
                           top: 14,
                           left: 14,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.55),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.25),
-                                    width: 0.9,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (BreakingNewsDetectorService.isBreakingArticle(article)) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 9, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEF4444),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFEF4444).withOpacity(0.5),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.bolt_rounded, color: Colors.white, size: 13),
+                                      SizedBox(width: 3),
+                                      Text(
+                                        'TIN NÓNG',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                child: Text(
-                                  article.source.isNotEmpty
-                                      ? article.source.toUpperCase()
-                                      : 'TIÊU ĐIỂM',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.6,
+                                const SizedBox(width: 6),
+                              ],
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.55),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.25),
+                                        width: 0.9,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      article.source.isNotEmpty
+                                          ? article.source.toUpperCase()
+                                          : 'TIÊU ĐIỂM',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.6,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
 

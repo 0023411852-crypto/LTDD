@@ -44,6 +44,18 @@ class AdminCategoriesController {
     await newsProvider.deleteCategory(id);
   }
 
+  Future<bool> updateCategorySettings({
+    required String categoryId,
+    int? maxArticles,
+    int? retentionDays,
+  }) async {
+    return await newsProvider.updateCategorySettings(
+      categoryId: categoryId,
+      maxArticles: maxArticles,
+      retentionDays: retentionDays,
+    );
+  }
+
   Future<void> restoreDefaultCategories() async {
     await newsProvider.restoreDefaultCategories();
   }

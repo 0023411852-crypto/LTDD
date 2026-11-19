@@ -71,7 +71,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               child: Text(
                 success
                     ? 'Đã cập nhật thông tin cá nhân thành công!'
-                    : ((profile.errorMessage != null && profile.errorMessage!.isNotEmpty)
+                    : ((profile.errorMessage != null &&
+                            profile.errorMessage!.isNotEmpty)
                         ? profile.errorMessage!
                         : (auth.errorMessage.isNotEmpty
                             ? auth.errorMessage
@@ -96,7 +97,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     if (auth.isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tài khoản quản trị viên hệ sinh thái không thể bị xóa.'),
+          content:
+              Text('Tài khoản quản trị viên hệ sinh thái không thể bị xóa.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -111,8 +113,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       title: 'Xóa tài khoản vĩnh viễn?',
       description:
           'Hành động này là vĩnh viễn và không thể khôi phục. Toàn bộ thông tin cá nhân và dữ liệu liên kết của bạn sẽ bị xóa hoàn toàn khỏi hệ thống.',
-      confirmText: 'Xác nhận xóa',
-      cancelText: 'Giữ tài khoản',
+      confirmText: 'Xác nhận',
+      cancelText: 'Huỷ',
       extraContent: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
@@ -122,11 +124,16 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         ),
         child: Column(
           children: [
-            _buildDeleteBullet('Toàn bộ Tên, Số điện thoại và Avatar sẽ bị xóa sạch.', isDark),
+            _buildDeleteBullet(
+                'Toàn bộ Tên, Số điện thoại và Avatar sẽ bị xóa sạch.', isDark),
             const SizedBox(height: 7),
-            _buildDeleteBullet('Hủy liên kết bài viết yêu thích và lịch sử đọc tin tức.', isDark),
+            _buildDeleteBullet(
+                'Hủy liên kết bài viết yêu thích và lịch sử đọc tin tức.',
+                isDark),
             const SizedBox(height: 7),
-            _buildDeleteBullet('Dọn dẹp sạch theo Nghị định 13/2023/NĐ-CP & Google Play.', isDark),
+            _buildDeleteBullet(
+                'Dọn dẹp sạch theo Nghị định 13/2023/NĐ-CP & Google Play.',
+                isDark),
           ],
         ),
       ),
@@ -144,13 +151,15 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 Icon(Icons.check_circle_rounded, color: Colors.white),
                 SizedBox(width: 10),
                 Expanded(
-                  child: Text('Tài khoản và toàn bộ dữ liệu của bạn đã được xóa thành công.'),
+                  child: Text(
+                      'Tài khoản và toàn bộ dữ liệu của bạn đã được xóa thành công.'),
                 ),
               ],
             ),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -174,7 +183,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       children: [
         const Padding(
           padding: EdgeInsets.only(top: 2),
-          child: Icon(Icons.remove_circle_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+          child: Icon(Icons.remove_circle_outline_rounded,
+              size: 14, color: Color(0xFFEF4444)),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -200,9 +210,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
     final bgColor = isDark ? const Color(0xFF090D1A) : const Color(0xFFF1F5F9);
     final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final textColor =
+        isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final subTextColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final borderColor =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -250,7 +263,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF2563EB).withOpacity(0.35),
+                                color:
+                                    const Color(0xFF2563EB).withOpacity(0.35),
                                 blurRadius: 18,
                                 offset: const Offset(0, 6),
                               ),
@@ -263,7 +277,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                                     imageUrl: profile.selectedAvatar,
                                     memCacheWidth: 300,
                                     fit: BoxFit.cover,
-                                    errorWidget: (_, __, ___) => _buildFallbackAvatar(cs),
+                                    errorWidget: (_, __, ___) =>
+                                        _buildFallbackAvatar(cs),
                                   )
                                 : _buildFallbackAvatar(cs),
                           ),
@@ -309,7 +324,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: auth.isAdmin
                             ? const Color(0xFFDC2626).withOpacity(0.12)
@@ -392,7 +408,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                                   imageUrl: url,
                                   memCacheWidth: 160,
                                   fit: BoxFit.cover,
-                                  errorWidget: (_, __, ___) => const Icon(Icons.person),
+                                  errorWidget: (_, __, ___) =>
+                                      const Icon(Icons.person),
                                 ),
                               ),
                             ),
@@ -475,14 +492,21 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     TextFormField(
                       initialValue: auth.email.isNotEmpty
                           ? auth.email
-                          : 'admin@portal.com',
+                          : 'Tài khoản khách (Chưa liên kết email)',
                       enabled: false,
                       style: TextStyle(color: subTextColor),
                       decoration: InputDecoration(
-                        labelText: 'Email tài khoản (Cố định)',
-                        labelStyle: TextStyle(color: subTextColor, fontSize: 13),
-                        prefixIcon: Icon(Icons.email_outlined, color: subTextColor),
-                        suffixIcon: Icon(Icons.lock_outline_rounded, size: 18, color: subTextColor),
+                        labelText: 'Email tài khoản',
+                        labelStyle:
+                            TextStyle(color: subTextColor, fontSize: 13),
+                        prefixIcon: Icon(
+                          auth.email.isNotEmpty
+                              ? Icons.email_outlined
+                              : Icons.account_circle_outlined,
+                          color: subTextColor,
+                        ),
+                        suffixIcon: Icon(Icons.lock_outline_rounded,
+                            size: 18, color: subTextColor),
                         filled: true,
                         fillColor: isDark
                             ? Colors.black.withOpacity(0.2)
@@ -563,15 +587,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     ),
                   ),
                 ),
-                Center(
-                  child: Text(
-                    'Tuân thủ chính sách bảo vệ dữ liệu Google Play & Nghị định 13/2023/NĐ-CP',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: subTextColor.withOpacity(0.8),
-                    ),
-                  ),
-                ),
               ],
               const SizedBox(height: 30),
             ],
@@ -605,7 +620,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
+      style: TextStyle(
+          color: textColor, fontWeight: FontWeight.w600, fontSize: 14.5),
       validator: validator,
       decoration: InputDecoration(
         labelText: label,

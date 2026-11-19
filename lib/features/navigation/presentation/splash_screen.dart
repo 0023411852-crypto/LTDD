@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'main_nav_screen.dart';
@@ -44,14 +45,18 @@ class _SplashScreenState extends State<SplashScreen>
 
     _fadeCtrl.forward();
 
-    _navTimer = Timer(const Duration(milliseconds: 1800), () {
+    _navTimer = Timer(const Duration(milliseconds: 1800), () async {
       if (!mounted) return;
       final auth = context.read<AuthProvider>();
+      final prefs = await SharedPreferences.getInstance();
+      final hasSkippedLogin = prefs.getBool('has_skipped_login') ?? false;
+      if (!mounted) return;
+      final shouldGoHome = auth.isAuthenticated || hasSkippedLogin;
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) =>
-              auth.isAuthenticated ? const MainNavScreen() : const LoginScreen(),
+              shouldGoHome ? const MainNavScreen() : const LoginScreen(),
           transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(opacity: animation, child: child);
           },

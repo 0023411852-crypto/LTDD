@@ -224,6 +224,45 @@ class AdminNewsTab extends StatelessWidget {
                                             fontSize: 11,
                                             color: Color(0xFF94A3B8)),
                                       ),
+                                      if (article.expiresAt != null) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF59E0B)
+                                                .withOpacity(0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'Hết hạn: ${article.expiresAt!.day}/${article.expiresAt!.month}',
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                color: Color(0xFFD97706),
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ] else ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981)
+                                                .withOpacity(0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'Lưu vĩnh viễn',
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                color: Color(0xFF10B981),
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],
@@ -368,6 +407,7 @@ class AdminNewsTab extends StatelessWidget {
     final inlineImagesCtrl = TextEditingController();
     final imageUrlCtrl = TextEditingController();
     final linkCtrl = TextEditingController();
+    int selectedRetentionDays = 0; // 0 = Giữ vĩnh viễn không xóa
     String selectedCatLabel = 'Thời sự';
     final catOptions = [
       'Thời sự',
@@ -546,6 +586,44 @@ class AdminNewsTab extends StatelessWidget {
                   decoration: _dialogInputDeco(
                       'https://vnexpress.net/...', Icons.link_rounded),
                 ),
+                const SizedBox(height: 14),
+
+                // Thời gian lưu trữ bài viết của Admin
+                _buildDialogLabel('Thời gian lưu trữ bài viết'),
+                const SizedBox(height: 4),
+                Text(
+                  'Admin có toàn quyền chọn giữ lại vĩnh viễn hoặc tự động hết hạn sau khoảng thời gian quy định',
+                  style: TextStyle(fontSize: 11.5, color: subTextColor),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    (0, 'Giữ vĩnh viễn (Không xóa)'),
+                    (1, 'Hết hạn sau 1 ngày'),
+                    (3, 'Hết hạn sau 3 ngày'),
+                    (7, 'Hết hạn sau 7 ngày'),
+                    (30, 'Hết hạn sau 30 ngày'),
+                  ].map((item) {
+                    final isSel = selectedRetentionDays == item.$1;
+                    return ChoiceChip(
+                      label: Text(item.$2),
+                      selected: isSel,
+                      selectedColor: const Color(0xFF10B981),
+                      labelStyle: TextStyle(
+                        color: isSel ? Colors.white : textColor,
+                        fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 12,
+                      ),
+                      onSelected: (_) {
+                        setModalState(() {
+                          selectedRetentionDays = item.$1;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
                 const SizedBox(height: 20),
 
                 // Nút đăng
@@ -595,6 +673,10 @@ class AdminNewsTab extends StatelessWidget {
                         ? linkCtrl.text.trim()
                         : 'https://news.google.com';
 
+                    final DateTime? expiresAt = selectedRetentionDays > 0
+                        ? DateTime.now().add(Duration(days: selectedRetentionDays))
+                        : null;
+
                     try {
                       await controller.addNewArticle(
                         Article(
@@ -604,6 +686,7 @@ class AdminNewsTab extends StatelessWidget {
                           imageUrl: imgUrl,
                           source: newAuthor,
                           publishedAt: DateTime.now(),
+                          expiresAt: expiresAt,
                           category: selectedCatLabel,
                           tags: tags,
                           inlineImageUrls: inlineImageUrls,

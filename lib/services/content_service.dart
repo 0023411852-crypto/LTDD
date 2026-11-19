@@ -68,7 +68,7 @@ class ContentService implements IContentService {
             ...Map<String, dynamic>.from(item),
             'id': entry.key.toString(),
           });
-          if (article.title.isNotEmpty && article.link.isNotEmpty) {
+          if (article.title.isNotEmpty && article.link.isNotEmpty && !article.isExpired) {
             articles.add(article);
           }
         } catch (_) {

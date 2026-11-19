@@ -1,6 +1,6 @@
 # 📱 Daily News & Weather Portal
 
-[![Release](https://img.shields.io/badge/Release-v1.2.0-blue.svg)](https://github.com/0023411852-crypto/LTDD/releases/tag/v1.2.0)
+[![Release](https://img.shields.io/badge/Release-v1.4.0-blue.svg)](https://github.com/0023411852-crypto/LTDD/releases/tag/v1.4.0)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B.svg?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.3+-0175C2.svg?logo=dart)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg?logo=android)](https://www.android.com)
@@ -18,6 +18,25 @@
 - ❤️ **Quản lý địa điểm yêu thích (Không Mock Data)**: Lưu trữ các thành phố quan tâm trực tiếp vào bộ nhớ máy, cập nhật trạng thái thời tiết sống động.
 - 🛡️ **Bảng điều khiển Quản trị viên (Admin Panel)**: Bổ sung nguồn RSS tùy chỉnh, kiểm tra tính hợp lệ HTTPS, duyệt/ẩn bài viết và xóa bài viết vào Blacklist vĩnh viễn.
 - 🔔 **Hệ thống thông báo phân luồng**: Tách biệt giữa Tin nóng phá cách (Breaking News) và Bản tin thời tiết buổi sáng lúc 07:00.
+
+---
+
+## ⚡ Hệ thống cảnh báo thông minh & Tối ưu trải nghiệm (Smart Alerts & UX)
+
+- 🚨 **Tự động nhận diện Tin nóng & Khẩn cấp (`BreakingNewsDetectorService`)**:
+  - Tự động phân tích các bài báo RSS từ VnExpress, Tuổi Trẻ, Thanh Niên... bằng bộ từ khóa thiên tai, bão lũ, hỏa hoạn, động đất, sự cố nghiêm trọng.
+  - Tự động gắn huy hiệu **`🔴 TIN NÓNG`** nổi bật trên Slider tiêu điểm và danh sách dòng sự kiện.
+- ⛈️ **Cảnh báo thời tiết nguy hiểm thời gian thực**: Tự động nhận diện thời tiết xấu (dông sét WMO 95/96/99, gió giật mạnh, mưa lớn ngập lụt) tại vị trí người dùng và gửi cảnh báo an toàn.
+- 🔕 **Chiến lược thông báo không làm phiền (Anti-Spam & Anti-Fatigue)**:
+  - Chỉ gửi thông báo đẩy (Banner nổi & Tab Chuông) khi có tin thật sự khẩn cấp hoặc thời tiết xấu; các tin thường nhật để người dùng chủ động mở app khi rảnh rỗi.
+  - Cơ chế ghi nhớ lịch sử qua `SharedPreferences`, chống lặp chuông khi vuốt làm mới trang; tôn trọng hoàn toàn công tắc bật/tắt trong Cài đặt.
+- 🚪 **Trải nghiệm mở app & điều hướng đăng nhập tinh gọn**:
+  - Tự động ghi nhớ trạng thái bỏ qua: lần mở app sau vào thẳng Trang chủ, chỉ mở màn hình Đăng nhập khi người dùng chủ động yêu cầu từ trang Cá nhân.
+  - Giao diện Đăng nhập / Đăng ký chuẩn mực: loại bỏ nút "Bỏ qua" dư thừa, sử dụng nút mũi tên quay lại mượt mà tích hợp `PopScope`.
+- 🛠️ **Quản trị nguồn tin & Thời hạn lưu trữ bài viết độc lập (Admin Controls)**:
+  - Cho phép Admin điều chỉnh **số lượng bài tối đa** (15, 30, 50, 100 tin hoặc không giới hạn) và **thời gian lưu trữ** (1, 3, 7, 14, 30 ngày hoặc vĩnh viễn) cho từng nguồn RSS riêng biệt.
+  - Bài viết do Admin tự đăng: tự do lựa chọn giữ vĩnh viễn không xóa hoặc hẹn giờ tự động hết hạn, tự tay xóa bất kỳ lúc nào.
+  - Đã loại bỏ hoàn toàn các phần khuyến mãi/tiện ích thừa thãi.
 
 ---
 

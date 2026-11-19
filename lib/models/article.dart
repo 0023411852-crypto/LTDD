@@ -6,6 +6,7 @@ class Article {
   final String? imageUrl;
   final String source;
   final DateTime? publishedAt;
+  final DateTime? expiresAt; // Thời điểm hết hạn (null = Giữ vĩnh viễn không xóa)
   final String category;
   final List<String> tags;
   final List<String> inlineImageUrls;
@@ -18,10 +19,45 @@ class Article {
     this.imageUrl,
     required this.source,
     this.publishedAt,
+    this.expiresAt,
     this.category = 'Tin tức',
     this.tags = const [],
     this.inlineImageUrls = const [],
   });
+
+  /// Kiểm tra xem bài viết đã hết hạn lưu trữ theo cấu hình Admin chưa
+  bool get isExpired {
+    if (expiresAt == null) return false;
+    return DateTime.now().isAfter(expiresAt!);
+  }
+
+  Article copyWith({
+    String? id,
+    String? title,
+    String? link,
+    String? description,
+    String? imageUrl,
+    String? source,
+    DateTime? publishedAt,
+    DateTime? expiresAt,
+    String? category,
+    List<String>? tags,
+    List<String>? inlineImageUrls,
+  }) {
+    return Article(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      link: link ?? this.link,
+      description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
+      source: source ?? this.source,
+      publishedAt: publishedAt ?? this.publishedAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      category: category ?? this.category,
+      tags: tags ?? this.tags,
+      inlineImageUrls: inlineImageUrls ?? this.inlineImageUrls,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -31,6 +67,7 @@ class Article {
       'imageUrl': imageUrl,
       'source': source,
       'publishedAt': publishedAt?.toIso8601String(),
+      'expiresAt': expiresAt?.toIso8601String(),
       'category': category,
       'tags': tags,
       'inlineImageUrls': inlineImageUrls,
@@ -46,6 +83,16 @@ class Article {
       parsedDate = DateTime.fromMillisecondsSinceEpoch(pubAtRaw);
     } else if (pubAtRaw is num) {
       parsedDate = DateTime.fromMillisecondsSinceEpoch(pubAtRaw.toInt());
+    }
+
+    DateTime? parsedExpiresAt;
+    final expAtRaw = json['expiresAt'];
+    if (expAtRaw is String) {
+      parsedExpiresAt = DateTime.tryParse(expAtRaw);
+    } else if (expAtRaw is int) {
+      parsedExpiresAt = DateTime.fromMillisecondsSinceEpoch(expAtRaw);
+    } else if (expAtRaw is num) {
+      parsedExpiresAt = DateTime.fromMillisecondsSinceEpoch(expAtRaw.toInt());
     }
 
     final rawTags = json['tags'];
@@ -66,6 +113,7 @@ class Article {
       imageUrl: json['imageUrl'] as String?,
       source: json['source'] as String? ?? '',
       publishedAt: parsedDate,
+      expiresAt: parsedExpiresAt,
       category: json['category'] as String? ?? 'Tin tức',
       tags: tags,
       inlineImageUrls: inlineImgs,

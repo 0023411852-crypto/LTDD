@@ -76,14 +76,17 @@ class AppTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return Colors.white;
-          return Colors.grey.shade400;
+          return Colors.white;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const Color(0xFF1E60F2);
+            return const Color(0xFF10B981);
           }
           return Colors.grey.shade300;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return Colors.transparent;
+          return Colors.grey.shade400;
         }),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -174,14 +177,17 @@ class AppTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return Colors.white;
-          return Colors.grey.shade400;
+          return Colors.white;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const Color(0xFF3B82F6);
+            return const Color(0xFF10B981);
           }
           return const Color(0xFF334155);
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return Colors.transparent;
+          return const Color(0xFF475569);
         }),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

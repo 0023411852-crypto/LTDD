@@ -8,13 +8,43 @@ class NewsCategory {
   final String label;
   final String rssUrl;
   final String source;
-  const NewsCategory(this.id, this.label, this.rssUrl, this.source);
+  final int maxArticles; // Số lượng bài tối đa giữ lại cho nguồn này (mặc định 30, 0 là không giới hạn)
+  final int retentionDays; // Thời gian giữ lại bài tin tính theo ngày (mặc định 7 ngày, 0 là vĩnh viễn không xóa)
+
+  const NewsCategory(
+    this.id,
+    this.label,
+    this.rssUrl,
+    this.source, {
+    this.maxArticles = 30,
+    this.retentionDays = 7,
+  });
+
+  NewsCategory copyWith({
+    String? id,
+    String? label,
+    String? rssUrl,
+    String? source,
+    int? maxArticles,
+    int? retentionDays,
+  }) {
+    return NewsCategory(
+      id ?? this.id,
+      label ?? this.label,
+      rssUrl ?? this.rssUrl,
+      source ?? this.source,
+      maxArticles: maxArticles ?? this.maxArticles,
+      retentionDays: retentionDays ?? this.retentionDays,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'label': label,
         'rssUrl': rssUrl,
         'source': source,
+        'maxArticles': maxArticles,
+        'retentionDays': retentionDays,
       };
 
   factory NewsCategory.fromJson(Map<String, dynamic> json) => NewsCategory(
@@ -22,6 +52,8 @@ class NewsCategory {
         json['label'] as String? ?? '',
         json['rssUrl'] as String? ?? '',
         json['source'] as String? ?? '',
+        maxArticles: json['maxArticles'] as int? ?? 30,
+        retentionDays: json['retentionDays'] as int? ?? 7,
       );
 }
 
@@ -83,10 +115,26 @@ class NewsService implements INewsService {
 
       final doc = XmlDocument.parse(res.body);
       final items = doc.findAllElements('item');
-      final articles = items
+      var articles = items
           .map((item) => _parseRssItem(item, category))
           .where((a) => a.title.isNotEmpty && a.link.isNotEmpty)
           .toList();
+
+      // [LỌC THEO THỜI GIAN LƯU TRỮ CHO TỪNG NGUỒN (RETENTION DAYS)]:
+      // Nếu category.retentionDays > 0, tự động loại bỏ các bài viết xuất bản trước mốc thời gian này
+      if (category.retentionDays > 0) {
+        final cutoff = now.subtract(Duration(days: category.retentionDays));
+        articles = articles.where((a) {
+          if (a.publishedAt == null) return true;
+          return a.publishedAt!.isAfter(cutoff);
+        }).toList();
+      }
+
+      // [GIỚI HẠN SỐ LƯỢNG TIN CHO TỪNG NGUỒN (MAX ARTICLES)]:
+      // Nếu category.maxArticles > 0, chỉ giữ lại số bài tối đa theo cấu hình Admin
+      if (category.maxArticles > 0 && articles.length > category.maxArticles) {
+        articles = articles.take(category.maxArticles).toList();
+      }
 
       _cache[category.id] = (now, articles);
       return articles;

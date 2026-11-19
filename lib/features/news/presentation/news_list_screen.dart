@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/article.dart';
+import '../../../services/breaking_news_detector_service.dart';
 import '../../favorites/providers/favorites_provider.dart';
 import '../../search/presentation/search_screen.dart';
 import '../providers/news_provider.dart';
@@ -383,6 +384,25 @@ class NewsListScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
+                            if (BreakingNewsDetectorService.isBreakingArticle(article)) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  '🔴 TIN NÓNG',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                            ],
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
@@ -539,7 +559,9 @@ class NewsListScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB).withOpacity(0.85),
+                        color: BreakingNewsDetectorService.isBreakingArticle(article)
+                            ? const Color(0xFFEF4444).withOpacity(0.9)
+                            : const Color(0xFF2563EB).withOpacity(0.85),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: Colors.white.withOpacity(0.3),
@@ -548,13 +570,20 @@ class NewsListScreen extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.bolt_rounded,
-                              size: 14, color: Colors.yellow),
+                          Icon(
+                            BreakingNewsDetectorService.isBreakingArticle(article)
+                                ? Icons.campaign_rounded
+                                : Icons.bolt_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                           const SizedBox(width: 4),
                           Text(
-                            article.source.isNotEmpty
-                                ? article.source
-                                : 'TIÊU ĐIỂM',
+                            BreakingNewsDetectorService.isBreakingArticle(article)
+                                ? 'TIN NÓNG'
+                                : (article.source.isNotEmpty
+                                    ? article.source
+                                    : 'TIÊU ĐIỂM'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,

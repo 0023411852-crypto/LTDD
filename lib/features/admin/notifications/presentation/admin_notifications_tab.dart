@@ -83,7 +83,7 @@ class _AdminNotificationsTabState extends State<AdminNotificationsTab> {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: ['Tin nóng', 'Thời tiết', 'Hệ thống', 'Khuyến mãi']
+                children: ['Tin nóng', 'Thời tiết', 'Hệ thống']
                     .map((type) {
                   final isSel = controller.selectedType == type;
                   return ChoiceChip(

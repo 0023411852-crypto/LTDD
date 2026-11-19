@@ -171,6 +171,27 @@ class NewsProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Cập nhật cấu hình số lượng bài tối đa và thời gian giữ lại cho từng nguồn tin
+  Future<bool> updateCategorySettings({
+    required String categoryId,
+    int? maxArticles,
+    int? retentionDays,
+  }) async {
+    final index = _categories.indexWhere((c) => c.id == categoryId);
+    if (index == -1) return false;
+
+    _categories[index] = _categories[index].copyWith(
+      maxArticles: maxArticles,
+      retentionDays: retentionDays,
+    );
+
+    await _saveCategories();
+    notifyListeners();
+    // Làm mới để áp dụng số lượng và thời gian lưu trữ mới
+    await fetchNews(forceRefresh: true);
+    return true;
+  }
+
   Future<void> deleteCategory(String categoryId) async {
     _categories.removeWhere((c) => c.id == categoryId);
     _selectedCategoryIds.remove(categoryId);

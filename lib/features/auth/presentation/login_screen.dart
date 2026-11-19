@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../navigation/presentation/main_nav_screen.dart';
 import '../../navigation/providers/navigation_provider.dart';
 import '../providers/auth_provider.dart';
@@ -212,7 +213,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _navigateAfterAuth(String message) {
+  void _navigateAfterAuth(String message) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_skipped_login', true);
+    } catch (_) {}
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -230,7 +235,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _skipToHome() {
+  Future<void> _handleBack() async {
+    if (_isRegister) {
+      setState(() => _isRegister = false);
+      return;
+    }
+    // Ghi nhớ trạng thái bỏ qua đăng nhập để các lần mở app sau vào thẳng trang chủ
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_skipped_login', true);
+    } catch (_) {}
+    if (!mounted) return;
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     } else {
@@ -240,6 +255,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
+
+  void _skipToHome() => _handleBack();
 
   @override
   Widget build(BuildContext context) {
@@ -253,51 +270,56 @@ class _LoginScreenState extends State<LoginScreen> {
         : const Color(0xFF082875).withOpacity(0.75);
     final chipBg = isDark ? const Color(0xFF1C2541) : Colors.white;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: Container(
-        // Gradient nền: xanh trời (Light) / xanh đêm cùng tông AppTheme (Dark)
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? const [
-                    Color(0xFF0B132B),
-                    Color(0xFF14264C),
-                    Color(0xFF1C2541),
-                    Color(0xFF0B132B)
-                  ]
-                : const [
-                    Color(0xFF5BB8FA),
-                    Color(0xFF90D0FF),
-                    Color(0xFFC5E9FF),
-                    Color(0xFFEDF6FF)
-                  ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: const [0.0, 0.25, 0.55, 1.0],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: Container(
+          // Gradient nền: xanh trời (Light) / xanh đêm cùng tông AppTheme (Dark)
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? const [
+                      Color(0xFF0B132B),
+                      Color(0xFF14264C),
+                      Color(0xFF1C2541),
+                      Color(0xFF0B132B)
+                    ]
+                  : const [
+                      Color(0xFF5BB8FA),
+                      Color(0xFF90D0FF),
+                      Color(0xFFC5E9FF),
+                      Color(0xFFEDF6FF)
+                    ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.25, 0.55, 1.0],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                physics: const BouncingScrollPhysics(),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 18),
+          child: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  physics: const BouncingScrollPhysics(),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 18),
 
-                      // ── Top Bar: Back button & Bỏ qua ──
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          if (_isRegister)
+                        // ── Top Bar: Mũi tên quay lại (Không có phần bỏ qua) ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             GestureDetector(
-                              onTap: () => setState(() => _isRegister = false),
+                              onTap: _handleBack,
                               child: Container(
                                 width: 40,
                                 height: 40,
@@ -314,68 +336,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 child: Icon(Icons.arrow_back_rounded,
                                     color: titleColor, size: 20),
-                              ),
-                            )
-                          else if (Navigator.canPop(context))
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: chipBg.withOpacity(0.9),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.08),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(Icons.arrow_back_rounded,
-                                    color: titleColor, size: 20),
-                              ),
-                            )
-                          else
-                            const SizedBox(width: 40),
-
-                          GestureDetector(
-                            onTap: _skipToHome,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: chipBg.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.06),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Text(
-                                    'Bỏ qua',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF1E60F2),
-                                    ),
-                                  ),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.arrow_forward_ios_rounded,
-                                      color: Color(0xFF1E60F2), size: 12),
-                                ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 40),
+                          ],
+                        ),
                       const SizedBox(height: 14),
 
                       // ── App Icon 3D ──
@@ -805,8 +770,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── Rounded white input field ──────────────────────────────────────
   Widget _buildField({

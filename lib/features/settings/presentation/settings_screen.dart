@@ -276,30 +276,6 @@ class SettingsScreen extends StatelessWidget {
                     }
                   },
                 ),
-                Divider(color: borderColor),
-                _buildSwitchRow(
-                  icon: Icons.card_giftcard_rounded,
-                  iconBg: const Color(0xFF6366F1).withOpacity(0.14),
-                  iconColor: const Color(0xFF6366F1),
-                  title: 'Tin tức tiện ích & Khuyến mại',
-                  subtitle: 'Các chương trình và thông tin ưu đãi tiện ích',
-                  value: settings.promoNotif,
-                  textColor: textColor,
-                  subTextColor: subTextColor,
-                  onChanged: (val) async {
-                    if (val) {
-                      final ok = await NotificationPermissionService.requestAndCheck(context);
-                      if (!ok) return;
-                    }
-                    settings.setPromoNotif(val);
-                    if (context.mounted) {
-                      _showToast(
-                        context,
-                        val ? 'Đã bật thông báo tiện ích' : 'Đã tắt thông báo tiện ích',
-                      );
-                    }
-                  },
-                ),
               ],
             ),
           ),
@@ -655,7 +631,19 @@ class SettingsScreen extends StatelessWidget {
         style: TextStyle(fontSize: 12, color: subTextColor),
       ),
       value: value,
-      activeColor: const Color(0xFF1E60F2),
+      thumbColor: WidgetStateProperty.resolveWith<Color>((states) => Colors.white),
+      trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const Color(0xFF10B981);
+        }
+        return const Color(0xFFCBD5E1);
+      }),
+      trackOutlineColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return Colors.transparent;
+        }
+        return const Color(0xFF94A3B8).withOpacity(0.4);
+      }),
       onChanged: onChanged,
     );
   }
