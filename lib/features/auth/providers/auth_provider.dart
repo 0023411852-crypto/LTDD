@@ -48,7 +48,7 @@ class AuthProvider extends ChangeNotifier {
     return _isCustomAdminLoggedIn ? 'Quản trị viên Hệ thống' : 'Khách';
   }
 
-  static const String rootAdminEmail = 'admin@portal.com';
+  static const String rootAdminEmail = 'llinh0be@gmail.com';
 
   String get email => _isCustomAdminLoggedIn
       ? (_customUserEmail ?? rootAdminEmail)
@@ -63,13 +63,17 @@ class AuthProvider extends ChangeNotifier {
   String get bio => _customUserBio ?? '';
 
   bool get isAdmin {
+    // 1. Kiểm tra tài khoản Firebase Auth thực tế (ưu tiên số 1)
+    if (_user != null) {
+      final email = (_user?.email ?? '').trim().toLowerCase();
+      return email.isNotEmpty && email == rootAdminEmail;
+    }
+    // 2. Chế độ phiên nội bộ: Bắt buộc email đã xác thực phải chính xác là rootAdminEmail
     if (_isCustomAdminLoggedIn) {
       final customEmail = (_customUserEmail ?? '').trim().toLowerCase();
       return customEmail == rootAdminEmail;
     }
-    final email = (_user?.email ?? '').trim().toLowerCase();
-    if (email.isEmpty) return false;
-    return email == rootAdminEmail;
+    return false;
   }
 
   StreamSubscription<User?>? _authStateSubscription;
@@ -105,7 +109,16 @@ class AuthProvider extends ChangeNotifier {
         _customUserEmail = prefs.getString('session_user_email');
         _customUserName = prefs.getString('session_user_name') ?? _customUserName;
         _customUserUid = prefs.getString('session_user_uid');
-        _isCustomAdminLoggedIn = prefs.getBool('session_is_admin') ?? false;
+        final savedIsAdmin = prefs.getBool('session_is_admin') ?? false;
+
+        // Chống giả mạo SharedPreferences (Tampering Guard):
+        // Dù file SharedPreferences trên máy root có bị hacker sửa session_is_admin = true,
+        // nếu email không phải chính xác là rootAdminEmail ('llinh0be@gmail.com') thì TUYỆT ĐỐI KHÔNG cấp quyền Admin.
+        if (savedIsAdmin && (_customUserEmail ?? '').trim().toLowerCase() == rootAdminEmail) {
+          _isCustomAdminLoggedIn = true;
+        } else {
+          _isCustomAdminLoggedIn = false;
+        }
         _status = AuthStatus.authenticated;
       }
       notifyListeners();
@@ -244,7 +257,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final adminEmail = email ?? 'admin@portal.com';
+      final adminEmail = email ?? rootAdminEmail;
       final adminName = name ?? 'Quản trị viên Hệ thống';
       _customUserEmail = adminEmail;
       _customUserName = adminName;
@@ -351,6 +364,14 @@ class AuthProvider extends ChangeNotifier {
     final normalizedName = (name != null && name.trim().isNotEmpty)
         ? name.trim()
         : normalizedEmail.split('@').first;
+
+    // Chặn người dùng tự đăng ký email Quản trị viên hệ thống
+    if (normalizedEmail == rootAdminEmail) {
+      _status = AuthStatus.unauthenticated;
+      _errorMessage = 'Email này được bảo lưu riêng cho Quản trị viên hệ thống, không thể đăng ký tự do.';
+      notifyListeners();
+      return false;
+    }
 
     _status = AuthStatus.authenticating;
     _errorMessage = '';
@@ -1009,7 +1030,7 @@ class AuthProvider extends ChangeNotifier {
   /// Xóa tài khoản người dùng vĩnh viễn (Tuân thủ Google Play Policy & Nghị định 13/2023/NĐ-CP)
   Future<bool> deleteAccount() async {
     // Không cho phép xóa tài khoản quản trị viên duy nhất của hệ thống
-    if (isAdmin || email.toLowerCase() == 'admin@portal.com') {
+    if (isAdmin || email.toLowerCase() == rootAdminEmail) {
       _errorMessage = 'Tài khoản quản trị viên hệ thống không thể bị xóa.';
       notifyListeners();
       return false;

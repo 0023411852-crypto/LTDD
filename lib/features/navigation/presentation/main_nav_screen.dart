@@ -9,6 +9,7 @@ import '../../home/presentation/home_screen.dart';
 import '../../news/presentation/news_list_screen.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
+import '../../search/providers/search_provider.dart';
 import '../../settings/providers/settings_provider.dart';
 import '../../weather/presentation/weather_screen.dart';
 import '../providers/navigation_provider.dart';
@@ -50,10 +51,12 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        final currentUid = auth.isAuthenticated ? auth.uid : null;
         context.read<FavoritesProvider>().updateUserContext(
               isAuthenticated: auth.isAuthenticated,
-              uid: auth.uid,
+              uid: currentUid,
             );
+        context.read<SearchProvider>().updateUserContext(currentUid);
         if (auth.isAuthenticated && auth.uid.isNotEmpty) {
           context.read<NotificationsProvider>().load(auth.uid);
         } else {

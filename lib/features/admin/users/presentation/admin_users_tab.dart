@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../features/auth/providers/auth_provider.dart';
 import '../controllers/admin_users_controller.dart';
 
 class AdminUsersTab extends StatelessWidget {
@@ -207,7 +208,7 @@ class AdminUsersTab extends StatelessWidget {
                         final isGoogleLinked =
                             u['isGoogleLinked'] == true || u['googleId'] != null;
                         final isUserAdmin =
-                            u['isAdmin'] == true || uEmail.trim().toLowerCase() == 'admin@portal.com';
+                            u['isAdmin'] == true || uEmail.trim().toLowerCase() == AuthProvider.rootAdminEmail;
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),

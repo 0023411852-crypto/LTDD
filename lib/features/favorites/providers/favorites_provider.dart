@@ -15,7 +15,7 @@ import '../../auth/presentation/login_screen.dart';
 ///    lên Database tài khoản (`users/$uid/...`), loại bỏ trùng lặp, sau đó dọn sạch dữ liệu tạm.
 /// 3. Phân tách dòng DB độc lập hoàn toàn theo `uid`.
 class FavoritesProvider extends ChangeNotifier {
-  static const Duration _timeout = Duration(seconds: 12);
+  static const Duration _timeout = Duration(seconds: 3);
   static const String _keyGuestFavorites = 'guest_favorite_articles';
   static const String _keyGuestFavoriteCities = 'guest_favorite_cities';
 
@@ -83,7 +83,7 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   /// Đồng bộ trạng thái người dùng (HỢP NHẤT DỮ LIỆU TẠM KHI ĐĂNG NHẬP)
-  void updateUserContext({required bool isAuthenticated, String? uid}) {
+  Future<void> updateUserContext({required bool isAuthenticated, String? uid}) async {
     final effectiveUid = (isAuthenticated && uid != null && uid.isNotEmpty) ? uid : null;
     if (_currentUid == effectiveUid && _isExplicitLoggedIn == isAuthenticated) {
       return;
@@ -97,11 +97,11 @@ class FavoritesProvider extends ChangeNotifier {
 
     if (effectiveUid == null) {
       // Chế độ Khách: Nạp dữ liệu lưu tạm trên máy
-      _loadGuestFavorites();
-      _loadGuestFavoriteCities();
+      await _loadGuestFavorites();
+      await _loadGuestFavoriteCities();
     } else {
       // Đã đăng nhập: Nạp và HỢP NHẤT (Merge) dữ liệu khách lên tài khoản Cloud
-      _loadAndMergeUserFavorites(effectiveUid);
+      await _loadAndMergeUserFavorites(effectiveUid);
     }
   }
 
@@ -109,10 +109,12 @@ class FavoritesProvider extends ChangeNotifier {
   // 1. TẢI & HỢP NHẤT DỮ LIỆU (MERGE LOGIC - HƯỚNG B)
   // ─────────────────────────────────────────────────────────────
   Future<void> _loadGuestFavorites() async {
+    if (_currentUid != null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (_currentUid != null) return;
       final listJson = prefs.getStringList(_keyGuestFavorites);
-      if (listJson != null) {
+      if (listJson != null && _currentUid == null) {
         _favorites.clear();
         for (final itemStr in listJson) {
           try {
@@ -123,16 +125,18 @@ class FavoritesProvider extends ChangeNotifier {
             }
           } catch (_) {}
         }
-        notifyListeners();
+        if (_currentUid == null) notifyListeners();
       }
     } catch (_) {}
   }
 
   Future<void> _loadGuestFavoriteCities() async {
+    if (_currentUid != null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (_currentUid != null) return;
       final listJson = prefs.getStringList(_keyGuestFavoriteCities);
-      if (listJson != null) {
+      if (listJson != null && _currentUid == null) {
         _favoriteCities.clear();
         for (final itemStr in listJson) {
           try {
@@ -143,8 +147,8 @@ class FavoritesProvider extends ChangeNotifier {
             }
           } catch (_) {}
         }
-        notifyListeners();
-      } else {
+        if (_currentUid == null) notifyListeners();
+      } else if (_currentUid == null) {
         // Mặc định cho khách mới các địa điểm tiêu biểu
         _favoriteCities.addAll([
           WeatherService.cities[0], // Hà Nội
@@ -153,7 +157,7 @@ class FavoritesProvider extends ChangeNotifier {
           WeatherService.cities[4], // Quần đảo Trường Sa (Khánh Hòa)
         ]);
         await _saveGuestCities();
-        notifyListeners();
+        if (_currentUid == null) notifyListeners();
       }
     } catch (_) {}
   }
@@ -226,29 +230,29 @@ class FavoritesProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // 4. HỢP NHẤT DỮ LIỆU (DEDUPLICATION UNION):
-      // Cloud Articles + User Local Articles + Guest Articles (không trùng link)
+      // 4. HỢP NHẤT DỮ LIỆU (DEDUPLICATION UNION CHÍNH XÁC CAO):
+      // Tiêu chí Article: canonical URL (bỏ tracking, trailing slash) hoặc id
       final mergedArticles = <Article>[...cloudArticles];
       for (final a in userArticles) {
-        if (!mergedArticles.any((m) => m.link == a.link)) {
+        if (!mergedArticles.any((m) => isSameArticle(m, a))) {
           mergedArticles.add(a);
         }
       }
       for (final a in guestArticles) {
-        if (!mergedArticles.any((m) => m.link == a.link)) {
+        if (!mergedArticles.any((m) => isSameArticle(m, a))) {
           mergedArticles.insert(0, a); // Đưa bài khách vừa lưu lên đầu
         }
       }
 
-      // Cloud Cities + User Local Cities + Guest Cities (không trùng tên)
+      // Tiêu chí City: Tọa độ địa lý (sai số < 2km) hoặc Trùng tên + cùng khu vực (< 25km)
       final mergedCities = <City>[...cloudCities];
       for (final c in userCities) {
-        if (!mergedCities.any((m) => m.name.toLowerCase() == c.name.toLowerCase())) {
+        if (!mergedCities.any((m) => isSameCity(m, c))) {
           mergedCities.add(c);
         }
       }
       for (final c in guestCities) {
-        if (!mergedCities.any((m) => m.name.toLowerCase() == c.name.toLowerCase())) {
+        if (!mergedCities.any((m) => isSameCity(m, c))) {
           mergedCities.insert(0, c);
         }
       }
@@ -263,9 +267,20 @@ class FavoritesProvider extends ChangeNotifier {
         ]);
       }
 
-      // 5. Cập nhật state in-memory
+      // 5. Cập nhật state in-memory (Bảo lưu cả các thao tác phát sinh trong khi đang đồng bộ)
+      for (final fresh in _favorites) {
+        if (!mergedArticles.any((m) => isSameArticle(m, fresh))) {
+          mergedArticles.insert(0, fresh);
+        }
+      }
       _favorites.clear();
       _favorites.addAll(mergedArticles);
+
+      for (final fresh in _favoriteCities) {
+        if (!mergedCities.any((m) => isSameCity(m, fresh))) {
+          mergedCities.insert(0, fresh);
+        }
+      }
       _favoriteCities.clear();
       _favoriteCities.addAll(mergedCities);
       notifyListeners();
@@ -285,11 +300,78 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // TIÊU CHUẨN XÁC ĐỊNH TRÙNG LẶP (DEDUPLICATION STANDARDS)
+  // ─────────────────────────────────────────────────────────────
+
+  /// Xác định 2 bài viết có phải là một hay không:
+  /// 1. Nếu có `id` hợp lệ và không rỗng -> So theo `id`.
+  /// 2. So theo URL chuẩn hóa (bỏ query parameters quảng cáo/tracking, trailing slash, khoảng trắng).
+  static bool isSameArticle(Article a, Article b) {
+    if (a.id != null && b.id != null && a.id!.isNotEmpty && b.id!.isNotEmpty) {
+      if (a.id == b.id) return true;
+    }
+    final normA = normalizeUrl(a.link);
+    final normB = normalizeUrl(b.link);
+    return normA.isNotEmpty && normA == normB;
+  }
+
+  /// Chuẩn hóa URL bài viết: bỏ khoảng trắng, chữ thường, bỏ trailing slash, bỏ UTM/tracking query
+  static String normalizeUrl(String rawUrl) {
+    var url = rawUrl.trim().toLowerCase();
+    if (url.isEmpty) return '';
+    try {
+      final uri = Uri.parse(url);
+      final cleanParams = Map<String, String>.from(uri.queryParameters);
+      cleanParams.removeWhere((k, _) =>
+          k.startsWith('utm_') ||
+          k == 'ref' ||
+          k == 'fbclid' ||
+          k == 'source' ||
+          k == 'token');
+      final cleanUri = Uri(
+        scheme: uri.scheme,
+        host: uri.host,
+        port: uri.hasPort ? uri.port : null,
+        path: uri.path.endsWith('/') && uri.path.length > 1
+            ? uri.path.substring(0, uri.path.length - 1)
+            : uri.path,
+        queryParameters: cleanParams.isEmpty ? null : cleanParams,
+      );
+      return cleanUri.toString();
+    } catch (_) {
+      if (url.endsWith('/')) {
+        url = url.substring(0, url.length - 1);
+      }
+      return url;
+    }
+  }
+
+  /// Xác định 2 địa điểm thời tiết có phải là một hay không:
+  /// 1. Cùng tọa độ địa lý (sai số < 0.02 độ, xấp xỉ < 2km) -> Cùng vị trí.
+  /// 2. Hoặc trùng tên (không phân biệt hoa/thường) VÀ sai số tọa độ < 0.25 độ (cùng khu vực).
+  /// -> Nếu trùng tên nhưng tọa độ khác xa nhau (ví dụ: các huyện/xã trùng tên ở tỉnh khác),
+  /// hệ thống coi là hai địa điểm khác biệt, KHÔNG làm mất bài/địa điểm của người dùng.
+  static bool isSameCity(City a, City b) {
+    final latDiff = (a.lat - b.lat).abs();
+    final lonDiff = (a.lon - b.lon).abs();
+
+    if (latDiff < 0.02 && lonDiff < 0.02) return true;
+
+    final nameA = a.name.trim().toLowerCase();
+    final nameB = b.name.trim().toLowerCase();
+    if (nameA == nameB && latDiff < 0.25 && lonDiff < 0.25) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // 2. THAO TÁC YÊU THÍCH (ARTICLES & CITIES)
   // ─────────────────────────────────────────────────────────────
   bool isFavorite(Article article) {
     if (article.link.trim().isEmpty) return false;
-    return _favorites.any((item) => item.link == article.link);
+    return _favorites.any((item) => isSameArticle(item, article));
   }
 
   Future<bool> toggleFavorite(Article article, {BuildContext? context}) async {
@@ -298,7 +380,7 @@ class FavoritesProvider extends ChangeNotifier {
     final uid = activeUid;
     final isGuest = uid == null || uid.isEmpty;
 
-    final index = _favorites.indexWhere((item) => item.link == article.link);
+    final index = _favorites.indexWhere((item) => isSameArticle(item, article));
     final wasAdded = index < 0;
     if (wasAdded) {
       _favorites.insert(0, article);
@@ -323,7 +405,7 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   Future<void> removeFavorite(Article article) async {
-    final index = _favorites.indexWhere((item) => item.link == article.link);
+    final index = _favorites.indexWhere((item) => isSameArticle(item, article));
     if (index >= 0) {
       _favorites.removeAt(index);
       notifyListeners();
@@ -339,7 +421,7 @@ class FavoritesProvider extends ChangeNotifier {
 
   bool isFavoriteCity(City city) {
     if (city.name.trim().isEmpty) return false;
-    return _favoriteCities.any((c) => c.name.toLowerCase() == city.name.toLowerCase());
+    return _favoriteCities.any((c) => isSameCity(c, city));
   }
 
   Future<bool> toggleFavoriteCity(City city, {BuildContext? context}) async {
@@ -348,8 +430,7 @@ class FavoritesProvider extends ChangeNotifier {
     final uid = activeUid;
     final isGuest = uid == null || uid.isEmpty;
 
-    final index = _favoriteCities.indexWhere(
-        (c) => c.name.toLowerCase() == city.name.toLowerCase());
+    final index = _favoriteCities.indexWhere((c) => isSameCity(c, city));
     final wasAdded = index < 0;
     if (wasAdded) {
       _favoriteCities.insert(0, city);
@@ -374,8 +455,7 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   Future<void> removeFavoriteCity(City city) async {
-    final index = _favoriteCities.indexWhere(
-        (c) => c.name.toLowerCase() == city.name.toLowerCase());
+    final index = _favoriteCities.indexWhere((c) => isSameCity(c, city));
     if (index >= 0) {
       _favoriteCities.removeAt(index);
       notifyListeners();

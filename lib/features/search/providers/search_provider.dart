@@ -32,6 +32,13 @@ class SearchProvider extends ChangeNotifier {
     'Giáo dục',
   ];
 
+  String? _currentUid;
+
+  String get _historyStorageKey =>
+      (_currentUid != null && _currentUid!.isNotEmpty)
+          ? 'search_history_$_currentUid'
+          : 'search_history_guest';
+
   List<String> get history => _history;
   List<Article> get searchResults => _searchResults;
   List<City> get matchingCities => _matchingCities;
@@ -48,26 +55,49 @@ class SearchProvider extends ChangeNotifier {
     loadHistory();
   }
 
+  /// Cập nhật ngữ cảnh người dùng (Bảo mật quyền riêng tư):
+  /// Khi chuyển đổi tài khoản (User A -> User B) hoặc Đăng xuất (User -> Khách),
+  /// nạp lại lịch sử tìm kiếm riêng biệt tương ứng, tuyệt đối không làm lộ lịch sử của nhau.
+  Future<void> updateUserContext(String? uid) async {
+    final effectiveUid = (uid != null && uid.isNotEmpty) ? uid : null;
+    _currentUid = effectiveUid;
+    await loadHistory();
+  }
+
   void setActiveFilter(String filter) {
     if (_activeFilter == filter) return;
     _activeFilter = filter;
     notifyListeners();
   }
 
-  /// Tải lịch sử tìm kiếm từ SharedPreferences
+  int _loadSequence = 0;
+
+  /// Tải lịch sử tìm kiếm từ SharedPreferences theo từng tài khoản (chống Race Condition)
   Future<void> loadHistory() async {
+    final currentSeq = ++_loadSequence;
     try {
       final prefs = await SharedPreferences.getInstance();
-      _history = prefs.getStringList('search_history') ??
-          ['thời tiết', 'Hoàng Sa', 'Trường Sa', 'tin thể thao'];
+      if (currentSeq != _loadSequence) return;
+      final key = _historyStorageKey;
+      final saved = prefs.getStringList(key);
+      if (currentSeq != _loadSequence) return;
+      if (saved != null) {
+        _history = List.from(saved);
+      } else if (_currentUid == null) {
+        // Gợi ý chủ đề phổ biến ban đầu cho Khách mới
+        _history = ['thời tiết', 'Hoàng Sa', 'Trường Sa', 'tin thể thao'];
+      } else {
+        _history = [];
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('SearchProvider.loadHistory error: $e');
     }
   }
 
-  /// Lưu truy vấn vào lịch sử
+  /// Lưu truy vấn vào lịch sử riêng của tài khoản hiện tại
   Future<void> saveHistory(String query) async {
+    _loadSequence++; // Khóa sequence ngăn bất kỳ tiến trình load cũ nào ghi đè
     final trimmed = query.trim();
     if (trimmed.isEmpty) return;
     _history.remove(trimmed);
@@ -77,34 +107,34 @@ class SearchProvider extends ChangeNotifier {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('search_history', _history);
+      await prefs.setStringList(_historyStorageKey, _history);
     } catch (e) {
       debugPrint('SearchProvider.saveHistory error: $e');
     }
   }
 
-  /// Xóa một mục cụ thể khỏi lịch sử tìm kiếm
+  /// Xóa một mục cụ thể khỏi lịch sử tìm kiếm của tài khoản
   Future<void> removeHistoryItem(String query) async {
     final trimmed = query.trim();
     if (_history.remove(trimmed)) {
       notifyListeners();
       try {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('search_history', _history);
+        await prefs.setStringList(_historyStorageKey, _history);
       } catch (e) {
         debugPrint('SearchProvider.removeHistoryItem error: $e');
       }
     }
   }
 
-  /// Xóa sạch lịch sử tìm kiếm
+  /// Xóa sạch lịch sử tìm kiếm của tài khoản hiện tại
   Future<void> clearHistory() async {
     _history.clear();
     notifyListeners();
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('search_history');
+      await prefs.remove(_historyStorageKey);
     } catch (e) {
       debugPrint('SearchProvider.clearHistory error: $e');
     }

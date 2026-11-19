@@ -4,6 +4,7 @@ import 'package:daily_news_weather_portal/features/navigation/presentation/main_
 import 'package:daily_news_weather_portal/features/navigation/providers/navigation_provider.dart';
 import 'package:daily_news_weather_portal/features/news/providers/news_provider.dart';
 import 'package:daily_news_weather_portal/features/notifications/providers/notifications_provider.dart';
+import 'package:daily_news_weather_portal/features/search/providers/search_provider.dart';
 import 'package:daily_news_weather_portal/features/settings/providers/settings_provider.dart';
 import 'package:daily_news_weather_portal/features/settings/providers/theme_provider.dart';
 import 'package:daily_news_weather_portal/features/weather/providers/weather_provider.dart';
@@ -104,7 +105,7 @@ void main() {
       expect(provider.isFavorite(articleGuest), isTrue);
 
       // Khách đăng nhập -> Dữ liệu được giữ và merge lên user
-      provider.updateUserContext(isAuthenticated: true, uid: 'user_merged_test');
+      await provider.updateUserContext(isAuthenticated: true, uid: 'user_merged_test');
       expect(provider.isFavorite(articleGuest), isTrue);
     });
   });
@@ -123,6 +124,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => NotificationsProvider()),
             ChangeNotifierProvider(create: (_) => NavigationProvider()),
             ChangeNotifierProvider(create: (_) => SettingsProvider()),
+            ChangeNotifierProvider(create: (_) => SearchProvider()),
           ],
           child: const MaterialApp(
             home: MainNavScreen(),
