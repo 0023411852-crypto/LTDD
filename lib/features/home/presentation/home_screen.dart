@@ -202,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   size: 20,
                                 ),
                                 onPressed: () {
-                                  fav.toggleFavoriteCity(city);
+                                  fav.toggleFavoriteCity(city, context: context);
                                 },
                               );
                             },
@@ -1116,7 +1116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             selector: (_, fav) => fav.isFavorite(article),
                             builder: (context, isFav, _) {
                               return InkWell(
-                                onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                                onTap: () => context.read<FavoritesProvider>().toggleFavorite(article, context: context),
                                 borderRadius: BorderRadius.circular(22),
                                 child: Container(
                                   width: 40,
@@ -1635,7 +1635,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         selector: (_, fav) => fav.isFavorite(article),
                         builder: (context, isFav, _) {
                           return InkWell(
-                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(article, context: context),
                             borderRadius: BorderRadius.circular(20),
                             child: SizedBox(
                               width: 36,
@@ -1778,7 +1778,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         selector: (_, fav) => fav.isFavorite(article),
                         builder: (context, isFav, _) {
                           return InkWell(
-                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(article, context: context),
                             borderRadius: BorderRadius.circular(18),
                             child: SizedBox(
                               width: 36,

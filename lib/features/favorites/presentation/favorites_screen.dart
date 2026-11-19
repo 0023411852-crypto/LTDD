@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../models/article.dart';
 import '../../../models/weather.dart';
 import '../../../services/weather_service.dart';
+import '../../auth/presentation/login_screen.dart';
 import '../../news/presentation/article_detail_screen.dart';
 import '../../weather/presentation/weather_screen.dart';
 import '../../weather/presentation/widgets/animated_weather_visual.dart';
@@ -44,6 +45,97 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final textColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
     final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    if (!favoritesProvider.isAuthenticated) {
+      return Scaffold(
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_rounded, color: textColor),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Kho lưu của bạn',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E60F2).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.bookmark_border_rounded,
+                    size: 54,
+                    color: Color(0xFF1E60F2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Yêu cầu đăng nhập',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Vui lòng đăng nhập tài khoản để xem và quản lý tin bài cũng như địa điểm yêu thích của bạn.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: subTextColor,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E60F2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Đăng nhập ngay',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: bgColor,

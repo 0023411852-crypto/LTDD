@@ -420,6 +420,7 @@ class NewsProvider extends ChangeNotifier {
       imageUrl: article.imageUrl,
       source: article.source,
       publishedAt: article.publishedAt,
+      expiresAt: article.expiresAt,
       category: article.category,
       tags: article.tags,
       inlineImageUrls: article.inlineImageUrls,

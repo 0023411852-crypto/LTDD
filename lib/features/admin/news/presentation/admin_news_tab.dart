@@ -224,45 +224,63 @@ class AdminNewsTab extends StatelessWidget {
                                             fontSize: 11,
                                             color: Color(0xFF94A3B8)),
                                       ),
-                                      if (article.expiresAt != null) ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF59E0B)
-                                                .withOpacity(0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            'Hết hạn: ${article.expiresAt!.day}/${article.expiresAt!.month}',
-                                            style: const TextStyle(
-                                                fontSize: 10,
-                                                color: Color(0xFFD97706),
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ] else ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF10B981)
-                                                .withOpacity(0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          child: const Text(
-                                            'Lưu vĩnh viễn',
-                                            style: TextStyle(
-                                                fontSize: 10,
-                                                color: Color(0xFF10B981),
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ],
+                                      Builder(
+                                        builder: (_) {
+                                          DateTime? effectiveExpiresAt = article.expiresAt;
+                                          if (effectiveExpiresAt == null) {
+                                            for (final c in controller.categories) {
+                                              if (c.label.trim().toLowerCase() == article.category.trim().toLowerCase() ||
+                                                  c.source.trim().toLowerCase() == article.source.trim().toLowerCase()) {
+                                                if (c.retentionDays > 0) {
+                                                  final baseDate = article.publishedAt ?? DateTime.now();
+                                                  effectiveExpiresAt = baseDate.add(Duration(days: c.retentionDays));
+                                                }
+                                                break;
+                                              }
+                                            }
+                                          }
+
+                                          if (effectiveExpiresAt != null) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(left: 6),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF59E0B).withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'Hết hạn: ${effectiveExpiresAt.day}/${effectiveExpiresAt.month}',
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    color: Color(0xFFD97706),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(left: 6),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF10B981).withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: const Text(
+                                                  'Lưu vĩnh viễn',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Color(0xFF10B981),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
                                     ],
                                   ),
                                 ],

@@ -139,28 +139,99 @@ class AuthProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> _saveProfilePrefs() async {
+  Future<void> _saveProfilePrefs([String? targetUid]) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final suffix = (targetUid != null && targetUid.isNotEmpty) ? '_$targetUid' : '';
       if (_customUserName != null) {
+        await prefs.setString('user_profile_name$suffix', _customUserName!);
         await prefs.setString('user_profile_name', _customUserName!);
       }
       if (_customUserPhone != null) {
+        await prefs.setString('user_profile_phone$suffix', _customUserPhone!);
         await prefs.setString('user_profile_phone', _customUserPhone!);
       }
       if (_customUserPhotoUrl != null) {
+        await prefs.setString('user_profile_photo$suffix', _customUserPhotoUrl!);
         await prefs.setString('user_profile_photo', _customUserPhotoUrl!);
       }
       if (_customUserBio != null) {
+        await prefs.setString('user_profile_bio$suffix', _customUserBio!);
         await prefs.setString('user_profile_bio', _customUserBio!);
       }
     } catch (_) {}
   }
 
-  void _onAuthStateChanged(User? firebaseUser) {
+  Future<void> _saveProfileToCloud(String targetUid) async {
+    try {
+      final dbRef = FirebaseDatabase.instance.ref('users/$targetUid/profile');
+      await dbRef.update({
+        'name': _customUserName ?? '',
+        'phone': _customUserPhone ?? '',
+        'photoUrl': _customUserPhotoUrl ?? '',
+        'bio': _customUserBio ?? '',
+        'email': email,
+        'updatedAt': ServerValue.timestamp,
+      }).timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('Cloud profile sync warning: $e');
+    }
+  }
+
+  Future<void> _loadProfileFromCloudOrPrefs(String targetUid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final localName = prefs.getString('user_profile_name_$targetUid') ??
+          prefs.getString('user_profile_name');
+      final localPhone = prefs.getString('user_profile_phone_$targetUid') ??
+          prefs.getString('user_profile_phone');
+      final localPhoto = prefs.getString('user_profile_photo_$targetUid') ??
+          prefs.getString('user_profile_photo');
+      final localBio = prefs.getString('user_profile_bio_$targetUid') ??
+          prefs.getString('user_profile_bio');
+
+      if (localName != null && localName.trim().isNotEmpty) _customUserName = localName.trim();
+      if (localPhone != null && localPhone.trim().isNotEmpty) _customUserPhone = localPhone.trim();
+      if (localPhoto != null && localPhoto.trim().isNotEmpty) _customUserPhotoUrl = localPhoto.trim();
+      if (localBio != null && localBio.trim().isNotEmpty) _customUserBio = localBio.trim();
+
+      // Cloud load from Firebase Realtime Database
+      final dbRef = FirebaseDatabase.instance.ref('users/$targetUid/profile');
+      final snapshot = await dbRef.get().timeout(const Duration(seconds: 8));
+      if (snapshot.exists && snapshot.value is Map) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        final cloudName = data['name'] as String?;
+        final cloudPhone = data['phone'] as String?;
+        final cloudPhoto = data['photoUrl'] as String?;
+        final cloudBio = data['bio'] as String?;
+
+        if (cloudName != null && cloudName.trim().isNotEmpty) {
+          _customUserName = cloudName.trim();
+          await prefs.setString('user_profile_name_$targetUid', _customUserName!);
+        }
+        if (cloudPhone != null && cloudPhone.trim().isNotEmpty) {
+          _customUserPhone = cloudPhone.trim();
+          await prefs.setString('user_profile_phone_$targetUid', _customUserPhone!);
+        }
+        if (cloudPhoto != null && cloudPhoto.trim().isNotEmpty) {
+          _customUserPhotoUrl = cloudPhoto.trim();
+          await prefs.setString('user_profile_photo_$targetUid', _customUserPhotoUrl!);
+        }
+        if (cloudBio != null && cloudBio.trim().isNotEmpty) {
+          _customUserBio = cloudBio.trim();
+          await prefs.setString('user_profile_bio_$targetUid', _customUserBio!);
+        }
+      }
+    } catch (e) {
+      debugPrint('Cloud profile load error: $e');
+    }
+  }
+
+  void _onAuthStateChanged(User? firebaseUser) async {
     _user = firebaseUser;
     if (firebaseUser != null) {
       _status = AuthStatus.authenticated;
+      await _loadProfileFromCloudOrPrefs(firebaseUser.uid);
     } else if (!_isCustomAdminLoggedIn && _customUserEmail == null) {
       _status = AuthStatus.unauthenticated;
     }
@@ -225,10 +296,16 @@ class AuthProvider extends ChangeNotifier {
         );
         _isCustomAdminLoggedIn = false;
         _customUserEmail = normalizedEmail;
-        _customUserName = _user?.displayName ?? normalizedEmail.split('@').first;
         _customUserUid = _user?.uid;
         _status = AuthStatus.authenticated;
         _errorMessage = '';
+
+        // Tải lại thông tin cá nhân đã đổi trước đó từ Database / Prefs
+        await _loadProfileFromCloudOrPrefs(_user?.uid ?? 'uid_$normalizedEmail');
+        if (_customUserName == null || _customUserName!.trim().isEmpty) {
+          _customUserName = _user?.displayName ?? normalizedEmail.split('@').first;
+        }
+
         await _saveActiveSession(
           normalizedEmail,
           _customUserName!,
@@ -738,12 +815,22 @@ class AuthProvider extends ChangeNotifier {
 
       _user = userCredential?.user;
       _customUserEmail = email;
-      _customUserName = existingAccount?['name'] ?? name;
-      _customUserPhotoUrl = photo ?? existingAccount?['photoUrl'];
       _customUserUid = unifiedUid;
       _isCustomAdminLoggedIn = (email.trim().toLowerCase() == rootAdminEmail);
       _status = AuthStatus.authenticated;
       _errorMessage = '';
+
+      // TẢI LẠI THÔNG TIN CÁ NHÂN ĐÃ ĐỔI TỪ DATABASE (ĐẢM BẢO TÊN ĐỔI KHÔNG BỊ GOOGLE ĐÈ MẤT)
+      await _loadProfileFromCloudOrPrefs(unifiedUid);
+
+      if (_customUserName == null || _customUserName!.trim().isEmpty) {
+        _customUserName = existingAccount?['name'] ?? name;
+      }
+      if (_customUserPhotoUrl == null || _customUserPhotoUrl!.trim().isEmpty) {
+        _customUserPhotoUrl = photo ?? existingAccount?['photoUrl'];
+      }
+      await _saveProfileToCloud(unifiedUid);
+      await _saveProfilePrefs(unifiedUid);
 
       await _saveActiveSession(
         email,
@@ -849,6 +936,9 @@ class AuthProvider extends ChangeNotifier {
     _customUserEmail = null;
     _customUserName = null;
     _customUserUid = null;
+    _customUserPhone = null;
+    _customUserPhotoUrl = null;
+    _customUserBio = null;
     await _clearActiveSession();
     try {
       await GoogleSignIn().signOut();
@@ -880,7 +970,11 @@ class AuthProvider extends ChangeNotifier {
       _customUserBio = bio.trim();
     }
 
-    await _saveProfilePrefs();
+    final targetUid = uid;
+    await _saveProfilePrefs(targetUid);
+    if (targetUid.isNotEmpty) {
+      await _saveProfileToCloud(targetUid);
+    }
 
     final user = _user;
     if (user != null) {

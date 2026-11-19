@@ -439,7 +439,7 @@ class NewsListScreen extends StatelessWidget {
                                 return InkWell(
                                   onTap: () => context
                                       .read<FavoritesProvider>()
-                                      .toggleFavorite(article),
+                                      .toggleFavorite(article, context: context),
                                   borderRadius: BorderRadius.circular(20),
                                   child: SizedBox(
                                     width: 36,
@@ -605,7 +605,7 @@ class NewsListScreen extends StatelessWidget {
                   selector: (_, fav) => fav.isFavorite(article),
                   builder: (context, isFav, _) {
                     return InkWell(
-                      onTap: () => context.read<FavoritesProvider>().toggleFavorite(article),
+                      onTap: () => context.read<FavoritesProvider>().toggleFavorite(article, context: context),
                       borderRadius: BorderRadius.circular(22),
                       child: Container(
                         width: 40,

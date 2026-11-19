@@ -278,11 +278,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               color: isFav ? cs.primary : null,
             ),
             tooltip: isFav ? 'Bỏ lưu' : 'Lưu bài viết',
-            onPressed: () {
-              favoritesProvider.toggleFavorite(widget.article);
+            onPressed: () async {
+              final wasFav = isFav;
+              final success = await favoritesProvider.toggleFavorite(
+                widget.article,
+                context: context,
+              );
+              if (!success || !context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(isFav
+                  content: Text(wasFav
                       ? 'Đã xóa khỏi mục Đã lưu'
                       : 'Đã thêm vào mục Đã lưu'),
                   duration: const Duration(seconds: 2),
@@ -500,7 +505,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 children: [
                   IconButton(
                     onPressed: () {
-                      favoritesProvider.toggleFavorite(widget.article);
+                      favoritesProvider.toggleFavorite(widget.article, context: context);
                     },
                     icon: Icon(
                       isFav

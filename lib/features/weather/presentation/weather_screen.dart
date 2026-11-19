@@ -101,14 +101,16 @@ class _WeatherScreenState extends State<WeatherScreen>
                 tooltip: isFav
                     ? 'Bỏ thích địa điểm này'
                     : 'Thêm vào địa điểm yêu thích',
-                onPressed: () {
-                  fav.toggleFavoriteCity(currentCity);
+                onPressed: () async {
+                  final wasFav = fav.isFavoriteCity(currentCity);
+                  final success = await fav.toggleFavoriteCity(currentCity, context: context);
+                  if (!success || !context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
                           Icon(
-                            isFav
+                            wasFav
                                 ? Icons.heart_broken_rounded
                                 : Icons.favorite_rounded,
                             color: Colors.white,
@@ -117,7 +119,7 @@ class _WeatherScreenState extends State<WeatherScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              isFav
+                              wasFav
                                   ? 'Đã bỏ thích ${currentCity.name}'
                                   : 'Đã lưu ${currentCity.name} vào Địa điểm yêu thích!',
                             ),

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/widgets/app_confirmation_dialog.dart';
+import '../../auth/presentation/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -132,7 +133,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 isDark),
             const SizedBox(height: 7),
             _buildDeleteBullet(
-                'Dọn dẹp sạch theo Nghị định 13/2023/NĐ-CP & Google Play.',
+                'Toàn bộ phiên hoạt động và lịch sử sẽ được thu hồi an toàn.',
                 isDark),
           ],
         ),
@@ -216,6 +217,97 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final borderColor =
         isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    if (!auth.isAuthenticated) {
+      return Scaffold(
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_rounded, color: textColor),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Thông tin cá nhân',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 54,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Yêu cầu đăng nhập',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Khách hàng chưa đăng nhập không thể truy cập vào thông tin cá nhân. Vui lòng đăng nhập để tiếp tục.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: subTextColor,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Đăng nhập ngay',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -315,7 +407,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     Text(
                       auth.email.isNotEmpty
                           ? auth.email
-                          : 'Tài khoản khách (Local Session)',
+                          : 'Chưa liên kết email',
                       style: TextStyle(
                         fontSize: 13,
                         color: subTextColor,
@@ -492,7 +584,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     TextFormField(
                       initialValue: auth.email.isNotEmpty
                           ? auth.email
-                          : 'Tài khoản khách (Chưa liên kết email)',
+                          : 'Chưa liên kết email',
                       enabled: false,
                       style: TextStyle(color: subTextColor),
                       decoration: InputDecoration(

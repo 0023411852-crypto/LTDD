@@ -156,12 +156,19 @@ class NewsService implements INewsService {
       } catch (_) {}
     }
 
+    DateTime? expires;
+    if (category.retentionDays > 0) {
+      final baseDate = pub ?? DateTime.now();
+      expires = baseDate.add(Duration(days: category.retentionDays));
+    }
+
     return Article.fromRssItem(
       title: item.getElement('title')?.innerText ?? '',
       link: item.getElement('link')?.innerText ?? '',
       description: item.getElement('description')?.innerText ?? '',
       source: category.source,
       publishedAt: pub,
+      expiresAt: expires,
       category: category.label,
     );
   }

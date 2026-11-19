@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../models/article.dart';
+import '../../../../services/news_service.dart';
 import '../../../news/providers/news_provider.dart';
 import '../../providers/admin_provider.dart';
 
@@ -17,6 +18,7 @@ class AdminNewsController {
   String get filter => adminProvider.newsFilter;
   Set<String> get pendingTitles => newsProvider.pendingArticleTitles;
   List<Article> get allArticles => newsProvider.allArticles;
+  List<NewsCategory> get categories => newsProvider.categories;
 
   void setSearchQuery(String query) => adminProvider.setNewsSearchQuery(query);
   void setFilter(String filter) => adminProvider.setNewsFilter(filter);

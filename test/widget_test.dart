@@ -1,7 +1,10 @@
 import 'package:daily_news_weather_portal/features/auth/providers/auth_provider.dart';
 import 'package:daily_news_weather_portal/features/favorites/providers/favorites_provider.dart';
 import 'package:daily_news_weather_portal/features/navigation/presentation/main_nav_screen.dart';
+import 'package:daily_news_weather_portal/features/navigation/providers/navigation_provider.dart';
 import 'package:daily_news_weather_portal/features/news/providers/news_provider.dart';
+import 'package:daily_news_weather_portal/features/notifications/providers/notifications_provider.dart';
+import 'package:daily_news_weather_portal/features/settings/providers/settings_provider.dart';
 import 'package:daily_news_weather_portal/features/settings/providers/theme_provider.dart';
 import 'package:daily_news_weather_portal/features/weather/providers/weather_provider.dart';
 import 'package:daily_news_weather_portal/models/article.dart';
@@ -64,9 +67,9 @@ void main() {
   });
 
   group('FavoritesProvider Tests', () {
-    test('Toggle and check favorites', () async {
+    test('Toggle and check favorites (Per-User Authenticated)', () async {
       final provider = FavoritesProvider();
-      await provider.loadFavorites();
+      provider.updateUserContext(isAuthenticated: true, uid: 'test_user_123');
 
       const article = Article(
         title: 'Thử nghiệm lưu bài',
@@ -77,11 +80,13 @@ void main() {
 
       expect(provider.isFavorite(article), isFalse);
 
-      await provider.toggleFavorite(article);
+      final added = await provider.toggleFavorite(article);
+      expect(added, isTrue);
       expect(provider.isFavorite(article), isTrue);
       expect(provider.favorites.length, 1);
 
-      await provider.toggleFavorite(article);
+      final removed = await provider.toggleFavorite(article);
+      expect(removed, isTrue);
       expect(provider.isFavorite(article), isFalse);
       expect(provider.favorites.isEmpty, isTrue);
     });
@@ -98,6 +103,9 @@ void main() {
             ChangeNotifierProvider(create: (_) => NewsProvider()),
             ChangeNotifierProvider(create: (_) => WeatherProvider()),
             ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+            ChangeNotifierProvider(create: (_) => NotificationsProvider()),
+            ChangeNotifierProvider(create: (_) => NavigationProvider()),
+            ChangeNotifierProvider(create: (_) => SettingsProvider()),
           ],
           child: const MaterialApp(
             home: MainNavScreen(),

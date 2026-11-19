@@ -3,8 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/notification_permission_service.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../favorites/providers/favorites_provider.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../news/presentation/news_list_screen.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../settings/providers/settings_provider.dart';
 import '../../weather/presentation/weather_screen.dart';
@@ -43,6 +46,22 @@ class _MainNavScreenState extends State<MainNavScreen> {
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavigationProvider>();
+    final auth = context.watch<AuthProvider>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<FavoritesProvider>().updateUserContext(
+              isAuthenticated: auth.isAuthenticated,
+              uid: auth.uid,
+            );
+        if (auth.isAuthenticated && auth.uid.isNotEmpty) {
+          context.read<NotificationsProvider>().load(auth.uid);
+        } else {
+          context.read<NotificationsProvider>().clearForGuest();
+        }
+      }
+    });
+
     final currentIndex = nav.currentIndex;
     final cs = Theme.of(context).colorScheme;
     const appMaxWidth = 560.0;

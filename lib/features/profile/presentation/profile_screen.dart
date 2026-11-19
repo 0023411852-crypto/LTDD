@@ -121,6 +121,13 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.person_outline_rounded,
                   title: 'Thông tin cá nhân',
                   onTap: () {
+                    if (!isLoggedIn) {
+                      _showLoginRequiredDialog(
+                        context,
+                        'để xem và chỉnh sửa thông tin cá nhân',
+                      );
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -135,6 +142,13 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.bookmark_border_rounded,
                   title: 'Tin đã lưu',
                   onTap: () {
+                    if (!isLoggedIn) {
+                      _showLoginRequiredDialog(
+                        context,
+                        'để xem danh sách tin bài và địa điểm đã lưu',
+                      );
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -464,6 +478,54 @@ class ProfileScreen extends StatelessWidget {
       },
     );
     nameController.dispose();
+  }
+
+  void _showLoginRequiredDialog(BuildContext context, String actionMessage) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_outline_rounded, color: Color(0xFF1E60F2), size: 24),
+            SizedBox(width: 10),
+            Text(
+              'Yêu cầu đăng nhập',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          'Vui lòng đăng nhập tài khoản $actionMessage.',
+          style: const TextStyle(fontSize: 14.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Để sau', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E60F2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Đăng nhập ngay',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMenuItem({
