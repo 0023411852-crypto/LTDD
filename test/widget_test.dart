@@ -90,6 +90,23 @@ void main() {
       expect(provider.isFavorite(article), isFalse);
       expect(provider.favorites.isEmpty, isTrue);
     });
+
+    test('Guest can save favorites and merge on login (Hướng B)', () async {
+      final provider = FavoritesProvider();
+      const articleGuest = Article(
+        title: 'Bài của khách',
+        link: 'https://vnexpress.net/guest-1',
+        description: 'Mô tả',
+        source: 'VnExpress',
+      );
+      final guestAdded = await provider.toggleFavorite(articleGuest);
+      expect(guestAdded, isTrue);
+      expect(provider.isFavorite(articleGuest), isTrue);
+
+      // Khách đăng nhập -> Dữ liệu được giữ và merge lên user
+      provider.updateUserContext(isAuthenticated: true, uid: 'user_merged_test');
+      expect(provider.isFavorite(articleGuest), isTrue);
+    });
   });
 
   group('Widget Navigation Test', () {

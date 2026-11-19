@@ -46,97 +46,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-    if (!favoritesProvider.isAuthenticated) {
-      return Scaffold(
-        backgroundColor: bgColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back_rounded, color: textColor),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            'Kho lưu của bạn',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-              color: textColor,
-            ),
-          ),
-          centerTitle: true,
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E60F2).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.bookmark_border_rounded,
-                    size: 54,
-                    color: Color(0xFF1E60F2),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Yêu cầu đăng nhập',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Vui lòng đăng nhập tài khoản để xem và quản lý tin bài cũng như địa điểm yêu thích của bạn.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: subTextColor,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E60F2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text(
-                      'Đăng nhập ngay',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -161,6 +70,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ),
       body: Column(
         children: [
+          // Banner nhắc nhở đăng nhập để đồng bộ đám mây (nếu là Khách)
+          if (!favoritesProvider.isAuthenticated)
+            _buildGuestSyncBanner(context, isDark, borderColor),
+
           // 1. THANH CHUYỂN TAB HIỆN ĐẠI (TIN TỨC | ĐỊA ĐIỂM)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
@@ -937,6 +850,46 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ),
       child: Center(
         child: Icon(Icons.newspaper_rounded, color: Colors.white54, size: 26),
+      ),
+    );
+  }
+
+  Widget _buildGuestSyncBanner(BuildContext context, bool isDark, Color borderColor) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2563EB).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_upload_outlined, color: Color(0xFF2563EB), size: 22),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Đang lưu tạm trên máy. Đăng nhập để đồng bộ đám mây vĩnh viễn!',
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, height: 1.3),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Đăng nhập', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

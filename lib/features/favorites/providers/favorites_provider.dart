@@ -8,8 +8,16 @@ import '../../../models/article.dart';
 import '../../../services/weather_service.dart';
 import '../../auth/presentation/login_screen.dart';
 
+/// FavoritesProvider: Quản lý Tin đã lưu & Địa điểm thời tiết yêu thích
+/// Triển khai theo HƯỚNG B:
+/// 1. Khách vẫn bấm tim / lưu thoải mái (lưu tạm trên máy với key `guest_...`).
+/// 2. Khi khách đăng nhập: Tự động HỢP NHẤT (Merge/Union) dữ liệu tạm của khách
+///    lên Database tài khoản (`users/$uid/...`), loại bỏ trùng lặp, sau đó dọn sạch dữ liệu tạm.
+/// 3. Phân tách dòng DB độc lập hoàn toàn theo `uid`.
 class FavoritesProvider extends ChangeNotifier {
   static const Duration _timeout = Duration(seconds: 12);
+  static const String _keyGuestFavorites = 'guest_favorite_articles';
+  static const String _keyGuestFavoriteCities = 'guest_favorite_cities';
 
   final List<Article> _favorites = [];
   final List<City> _favoriteCities = [];
@@ -46,6 +54,7 @@ class FavoritesProvider extends ChangeNotifier {
   String? get activeUid => _currentUid ?? _auth?.currentUser?.uid;
 
   FavoritesProvider() {
+    _loadInitialState();
     try {
       _authSubscription = _auth?.authStateChanges().listen((user) {
         if (user != null) {
@@ -63,7 +72,17 @@ class FavoritesProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Đồng bộ trạng thái người dùng độc lập (Per-User DB Isolation)
+  Future<void> _loadInitialState() async {
+    final user = _auth?.currentUser;
+    if (user != null) {
+      updateUserContext(isAuthenticated: true, uid: user.uid);
+    } else {
+      await _loadGuestFavorites();
+      await _loadGuestFavoriteCities();
+    }
+  }
+
+  /// Đồng bộ trạng thái người dùng (HỢP NHẤT DỮ LIỆU TẠM KHI ĐĂNG NHẬP)
   void updateUserContext({required bool isAuthenticated, String? uid}) {
     final effectiveUid = (isAuthenticated && uid != null && uid.isNotEmpty) ? uid : null;
     if (_currentUid == effectiveUid && _isExplicitLoggedIn == isAuthenticated) {
@@ -77,23 +96,22 @@ class FavoritesProvider extends ChangeNotifier {
     _favoriteCities.clear();
 
     if (effectiveUid == null) {
-      notifyListeners();
-      return;
+      // Chế độ Khách: Nạp dữ liệu lưu tạm trên máy
+      _loadGuestFavorites();
+      _loadGuestFavoriteCities();
+    } else {
+      // Đã đăng nhập: Nạp và HỢP NHẤT (Merge) dữ liệu khách lên tài khoản Cloud
+      _loadAndMergeUserFavorites(effectiveUid);
     }
-
-    // Tải dữ liệu độc lập của riêng User này
-    _loadUserFavorites(effectiveUid);
-    _loadUserFavoriteCities(effectiveUid);
-    syncWithCloud(effectiveUid);
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 1. QUẢN LÝ BÀI BÁO YÊU THÍCH (ARTICLES)
+  // 1. TẢI & HỢP NHẤT DỮ LIỆU (MERGE LOGIC - HƯỚNG B)
   // ─────────────────────────────────────────────────────────────
-  Future<void> _loadUserFavorites(String uid) async {
+  Future<void> _loadGuestFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final listJson = prefs.getStringList('favorite_articles_$uid');
+      final listJson = prefs.getStringList(_keyGuestFavorites);
       if (listJson != null) {
         _favorites.clear();
         for (final itemStr in listJson) {
@@ -110,13 +128,10 @@ class FavoritesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // 2. QUẢN LÝ ĐỊA ĐIỂM YÊU THÍCH (CITIES)
-  // ─────────────────────────────────────────────────────────────
-  Future<void> _loadUserFavoriteCities(String uid) async {
+  Future<void> _loadGuestFavoriteCities() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final listJson = prefs.getStringList('favorite_cities_$uid');
+      final listJson = prefs.getStringList(_keyGuestFavoriteCities);
       if (listJson != null) {
         _favoriteCities.clear();
         for (final itemStr in listJson) {
@@ -130,17 +145,196 @@ class FavoritesProvider extends ChangeNotifier {
         }
         notifyListeners();
       } else {
-        // Mặc định khởi tạo các địa điểm tiêu biểu cho tài khoản mới
+        // Mặc định cho khách mới các địa điểm tiêu biểu
         _favoriteCities.addAll([
           WeatherService.cities[0], // Hà Nội
           WeatherService.cities[1], // TP. Hồ Chí Minh
           WeatherService.cities[3], // Quần đảo Hoàng Sa (Đà Nẵng)
           WeatherService.cities[4], // Quần đảo Trường Sa (Khánh Hòa)
         ]);
-        await _saveCitiesToPrefs(uid);
+        await _saveGuestCities();
         notifyListeners();
       }
     } catch (_) {}
+  }
+
+  /// Hợp nhất dữ liệu tạm của Khách vào tài khoản Cloud của User
+  Future<void> _loadAndMergeUserFavorites(String uid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Đọc dữ liệu tạm của Khách trước khi xóa
+      final guestArticlesJson = prefs.getStringList(_keyGuestFavorites) ?? [];
+      final guestArticles = <Article>[];
+      for (final s in guestArticlesJson) {
+        try {
+          guestArticles.add(Article.fromJson(jsonDecode(s)));
+        } catch (_) {}
+      }
+
+      final guestCitiesJson = prefs.getStringList(_keyGuestFavoriteCities) ?? [];
+      final guestCities = <City>[];
+      for (final s in guestCitiesJson) {
+        try {
+          guestCities.add(City.fromJson(jsonDecode(s)));
+        } catch (_) {}
+      }
+
+      // 2. Đọc dữ liệu cục bộ của User (nếu có từ trước)
+      final userArticlesJson = prefs.getStringList('favorite_articles_$uid') ?? [];
+      final userArticles = <Article>[];
+      for (final s in userArticlesJson) {
+        try {
+          userArticles.add(Article.fromJson(jsonDecode(s)));
+        } catch (_) {}
+      }
+
+      final userCitiesJson = prefs.getStringList('favorite_cities_$uid') ?? [];
+      final userCities = <City>[];
+      for (final s in userCitiesJson) {
+        try {
+          userCities.add(City.fromJson(jsonDecode(s)));
+        } catch (_) {}
+      }
+
+      // 3. Tải dữ liệu từ Firebase Realtime Database
+      final cloudArticles = <Article>[];
+      final cloudCities = <City>[];
+      final db = _database;
+      if (db != null) {
+        try {
+          final snapFavs = await db.ref('users/$uid/favorites').get().timeout(_timeout);
+          if (snapFavs.exists && snapFavs.value != null) {
+            final val = snapFavs.value;
+            if (val is List) {
+              for (final it in val) {
+                if (it is Map) cloudArticles.add(Article.fromJson(Map<String, dynamic>.from(it)));
+              }
+            } else if (val is Map) {
+              val.forEach((_, v) {
+                if (v is Map) cloudArticles.add(Article.fromJson(Map<String, dynamic>.from(v)));
+              });
+            }
+          }
+
+          final snapCities = await db.ref('users/$uid/favorite_cities').get().timeout(_timeout);
+          if (snapCities.exists && snapCities.value is List) {
+            for (final it in (snapCities.value as List)) {
+              if (it is Map) cloudCities.add(City.fromJson(Map<String, dynamic>.from(it)));
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 4. HỢP NHẤT DỮ LIỆU (DEDUPLICATION UNION):
+      // Cloud Articles + User Local Articles + Guest Articles (không trùng link)
+      final mergedArticles = <Article>[...cloudArticles];
+      for (final a in userArticles) {
+        if (!mergedArticles.any((m) => m.link == a.link)) {
+          mergedArticles.add(a);
+        }
+      }
+      for (final a in guestArticles) {
+        if (!mergedArticles.any((m) => m.link == a.link)) {
+          mergedArticles.insert(0, a); // Đưa bài khách vừa lưu lên đầu
+        }
+      }
+
+      // Cloud Cities + User Local Cities + Guest Cities (không trùng tên)
+      final mergedCities = <City>[...cloudCities];
+      for (final c in userCities) {
+        if (!mergedCities.any((m) => m.name.toLowerCase() == c.name.toLowerCase())) {
+          mergedCities.add(c);
+        }
+      }
+      for (final c in guestCities) {
+        if (!mergedCities.any((m) => m.name.toLowerCase() == c.name.toLowerCase())) {
+          mergedCities.insert(0, c);
+        }
+      }
+
+      // Nếu tài khoản mới hoàn toàn chưa có địa điểm nào, gán mặc định
+      if (mergedCities.isEmpty) {
+        mergedCities.addAll([
+          WeatherService.cities[0],
+          WeatherService.cities[1],
+          WeatherService.cities[3],
+          WeatherService.cities[4],
+        ]);
+      }
+
+      // 5. Cập nhật state in-memory
+      _favorites.clear();
+      _favorites.addAll(mergedArticles);
+      _favoriteCities.clear();
+      _favoriteCities.addAll(mergedCities);
+      notifyListeners();
+
+      // 6. Lưu vào bộ nhớ cục bộ của user và Cloud
+      await _saveToPrefs(uid);
+      await _saveToCloud(uid);
+      await _saveCitiesToPrefs(uid);
+      await _saveCitiesToCloud(uid);
+
+      // 7. DỌN SẠCH DỮ LIỆU TẠM CỦA KHÁCH ĐỂ TRÁNH LẪN VÀO USER KHÁC
+      if (guestArticles.isNotEmpty || guestCities.isNotEmpty) {
+        await prefs.remove(_keyGuestFavorites);
+        await prefs.remove(_keyGuestFavoriteCities);
+      }
+    } catch (_) {}
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 2. THAO TÁC YÊU THÍCH (ARTICLES & CITIES)
+  // ─────────────────────────────────────────────────────────────
+  bool isFavorite(Article article) {
+    if (article.link.trim().isEmpty) return false;
+    return _favorites.any((item) => item.link == article.link);
+  }
+
+  Future<bool> toggleFavorite(Article article, {BuildContext? context}) async {
+    if (article.link.trim().isEmpty || article.title.trim().isEmpty) return false;
+
+    final uid = activeUid;
+    final isGuest = uid == null || uid.isEmpty;
+
+    final index = _favorites.indexWhere((item) => item.link == article.link);
+    final wasAdded = index < 0;
+    if (wasAdded) {
+      _favorites.insert(0, article);
+    } else {
+      _favorites.removeAt(index);
+    }
+    notifyListeners();
+
+    if (isGuest) {
+      await _saveGuestFavorites();
+      if (context != null && wasAdded) {
+        _showGuestSavedPrompt(
+          context,
+          'Bài viết đã lưu tạm trên máy. Đăng nhập để đồng bộ đám mây!',
+        );
+      }
+    } else {
+      await _saveToPrefs(uid);
+      await _saveToCloud(uid);
+    }
+    return true;
+  }
+
+  Future<void> removeFavorite(Article article) async {
+    final index = _favorites.indexWhere((item) => item.link == article.link);
+    if (index >= 0) {
+      _favorites.removeAt(index);
+      notifyListeners();
+      final uid = activeUid;
+      if (uid != null && uid.isNotEmpty) {
+        await _saveToPrefs(uid);
+        await _saveToCloud(uid);
+      } else {
+        await _saveGuestFavorites();
+      }
+    }
   }
 
   bool isFavoriteCity(City city) {
@@ -149,175 +343,69 @@ class FavoritesProvider extends ChangeNotifier {
   }
 
   Future<bool> toggleFavoriteCity(City city, {BuildContext? context}) async {
-    final uid = activeUid;
-    if (!isAuthenticated || uid == null || uid.isEmpty) {
-      if (context != null) {
-        _showLoginRequiredPrompt(context, 'lưu địa điểm thời tiết yêu thích');
-      }
-      return false;
-    }
-
     if (city.name.trim().isEmpty) return false;
+
+    final uid = activeUid;
+    final isGuest = uid == null || uid.isEmpty;
 
     final index = _favoriteCities.indexWhere(
         (c) => c.name.toLowerCase() == city.name.toLowerCase());
-    if (index >= 0) {
-      _favoriteCities.removeAt(index);
-    } else {
+    final wasAdded = index < 0;
+    if (wasAdded) {
       _favoriteCities.insert(0, city);
+    } else {
+      _favoriteCities.removeAt(index);
     }
     notifyListeners();
-    await _saveCitiesToPrefs(uid);
-    await _saveCitiesToCloud(uid);
+
+    if (isGuest) {
+      await _saveGuestCities();
+      if (context != null && wasAdded) {
+        _showGuestSavedPrompt(
+          context,
+          'Địa điểm đã lưu tạm trên máy. Đăng nhập để đồng bộ đám mây!',
+        );
+      }
+    } else {
+      await _saveCitiesToPrefs(uid);
+      await _saveCitiesToCloud(uid);
+    }
     return true;
   }
 
   Future<void> removeFavoriteCity(City city) async {
-    final uid = activeUid;
-    if (uid == null) return;
-
     final index = _favoriteCities.indexWhere(
         (c) => c.name.toLowerCase() == city.name.toLowerCase());
     if (index >= 0) {
       _favoriteCities.removeAt(index);
       notifyListeners();
-      await _saveCitiesToPrefs(uid);
-      await _saveCitiesToCloud(uid);
+      final uid = activeUid;
+      if (uid != null && uid.isNotEmpty) {
+        await _saveCitiesToPrefs(uid);
+        await _saveCitiesToCloud(uid);
+      } else {
+        await _saveGuestCities();
+      }
     }
   }
 
-  Future<void> _saveCitiesToPrefs(String uid) async {
+  // ─────────────────────────────────────────────────────────────
+  // 3. STORAGE HELPERS
+  // ─────────────────────────────────────────────────────────────
+  Future<void> _saveGuestFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final listJson =
-          _favoriteCities.map((c) => jsonEncode(c.toJson())).toList();
-      await prefs.setStringList('favorite_cities_$uid', listJson);
+      final listJson = _favorites.map((a) => jsonEncode(a.toJson())).toList();
+      await prefs.setStringList(_keyGuestFavorites, listJson);
     } catch (_) {}
   }
 
-  Future<void> _saveCitiesToCloud(String uid) async {
-    final db = _database;
-    if (db == null) return;
-
+  Future<void> _saveGuestCities() async {
     try {
-      final ref = db.ref('users/$uid/favorite_cities');
-      final listMaps = _favoriteCities.map((c) => c.toJson()).toList();
-      await ref.set(listMaps).timeout(_timeout);
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = _favoriteCities.map((c) => jsonEncode(c.toJson())).toList();
+      await prefs.setStringList(_keyGuestFavoriteCities, listJson);
     } catch (_) {}
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // 3. ĐỒNG BỘ CLOUD THEO ĐÚNG DÒNG UID ĐỘC LẬP (PER-USER ISOLATION)
-  // ─────────────────────────────────────────────────────────────
-  Future<void> syncWithCloud(String uid) async {
-    final db = _database;
-    if (db == null) return;
-
-    try {
-      // 1. Đồng bộ tin bài yêu thích
-      final ref = db.ref('users/$uid/favorites');
-      final snapshot = await ref.get().timeout(_timeout);
-
-      if (snapshot.exists && snapshot.value != null) {
-        final cloudData = snapshot.value;
-        final List<Article> cloudList = [];
-
-        if (cloudData is List) {
-          for (final item in cloudData) {
-            if (item != null && item is Map) {
-              final map = Map<String, dynamic>.from(item);
-              final article = Article.fromJson(map);
-              if (article.title.isNotEmpty && article.link.isNotEmpty) {
-                cloudList.add(article);
-              }
-            }
-          }
-        } else if (cloudData is Map) {
-          cloudData.forEach((key, val) {
-            if (val != null && val is Map) {
-              final map = Map<String, dynamic>.from(val);
-              final article = Article.fromJson(map);
-              if (article.title.isNotEmpty && article.link.isNotEmpty) {
-                cloudList.add(article);
-              }
-            }
-          });
-        }
-
-        // Set danh sách riêng của chính user này từ Database
-        if (cloudList.isNotEmpty) {
-          _favorites.clear();
-          _favorites.addAll(cloudList);
-          notifyListeners();
-          await _saveToPrefs(uid);
-        } else if (_favorites.isNotEmpty) {
-          await _saveToCloud(uid);
-        }
-      } else if (_favorites.isNotEmpty) {
-        await _saveToCloud(uid);
-      }
-
-      // 2. Đồng bộ danh sách địa điểm yêu thích từ Database
-      final citiesRef = db.ref('users/$uid/favorite_cities');
-      final citiesSnapshot = await citiesRef.get().timeout(_timeout);
-      if (citiesSnapshot.exists && citiesSnapshot.value is List) {
-        final cloudCities = <City>[];
-        for (final item in (citiesSnapshot.value as List)) {
-          if (item != null && item is Map) {
-            try {
-              cloudCities.add(City.fromJson(Map<String, dynamic>.from(item)));
-            } catch (_) {}
-          }
-        }
-        if (cloudCities.isNotEmpty) {
-          _favoriteCities.clear();
-          _favoriteCities.addAll(cloudCities);
-          notifyListeners();
-          await _saveCitiesToPrefs(uid);
-        }
-      }
-    } catch (_) {}
-  }
-
-  bool isFavorite(Article article) {
-    if (article.link.trim().isEmpty) return false;
-    return _favorites.any((item) => item.link == article.link);
-  }
-
-  Future<bool> toggleFavorite(Article article, {BuildContext? context}) async {
-    final uid = activeUid;
-    if (!isAuthenticated || uid == null || uid.isEmpty) {
-      if (context != null) {
-        _showLoginRequiredPrompt(context, 'lưu tin tức vào danh sách yêu thích');
-      }
-      return false;
-    }
-
-    if (article.link.trim().isEmpty || article.title.trim().isEmpty) return false;
-
-    final index = _favorites.indexWhere((item) => item.link == article.link);
-    if (index >= 0) {
-      _favorites.removeAt(index);
-    } else {
-      _favorites.insert(0, article);
-    }
-    notifyListeners();
-    await _saveToPrefs(uid);
-    await _saveToCloud(uid);
-    return true;
-  }
-
-  Future<void> removeFavorite(Article article) async {
-    final uid = activeUid;
-    if (uid == null) return;
-
-    final index = _favorites.indexWhere((item) => item.link == article.link);
-    if (index >= 0) {
-      _favorites.removeAt(index);
-      notifyListeners();
-      await _saveToPrefs(uid);
-      await _saveToCloud(uid);
-    }
   }
 
   Future<void> _saveToPrefs(String uid) async {
@@ -328,10 +416,17 @@ class FavoritesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> _saveCitiesToPrefs(String uid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = _favoriteCities.map((c) => jsonEncode(c.toJson())).toList();
+      await prefs.setStringList('favorite_cities_$uid', listJson);
+    } catch (_) {}
+  }
+
   Future<void> _saveToCloud(String uid) async {
     final db = _database;
     if (db == null) return;
-
     try {
       final ref = db.ref('users/$uid/favorites');
       final listMaps = _favorites.map((a) => a.toJson()).toList();
@@ -339,19 +434,29 @@ class FavoritesProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void _showLoginRequiredPrompt(BuildContext context, String actionText) {
+  Future<void> _saveCitiesToCloud(String uid) async {
+    final db = _database;
+    if (db == null) return;
+    try {
+      final ref = db.ref('users/$uid/favorite_cities');
+      final listMaps = _favoriteCities.map((c) => c.toJson()).toList();
+      await ref.set(listMaps).timeout(_timeout);
+    } catch (_) {}
+  }
+
+  void _showGuestSavedPrompt(BuildContext context, String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 20),
+            const Icon(Icons.cloud_upload_outlined, color: Colors.amberAccent, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Vui lòng đăng nhập để $actionText.',
-                style: const TextStyle(fontSize: 13.5),
+                message,
+                style: const TextStyle(fontSize: 13),
               ),
             ),
           ],
@@ -372,7 +477,7 @@ class FavoritesProvider extends ChangeNotifier {
         backgroundColor: const Color(0xFF1E293B),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(milliseconds: 2200),
+        duration: const Duration(milliseconds: 2600),
         dismissDirection: DismissDirection.horizontal,
       ),
     );

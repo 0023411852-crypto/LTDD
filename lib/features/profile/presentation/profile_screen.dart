@@ -121,13 +121,6 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.person_outline_rounded,
                   title: 'Thông tin cá nhân',
                   onTap: () {
-                    if (!isLoggedIn) {
-                      _showLoginRequiredDialog(
-                        context,
-                        'để xem và chỉnh sửa thông tin cá nhân',
-                      );
-                      return;
-                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -142,13 +135,6 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.bookmark_border_rounded,
                   title: 'Tin đã lưu',
                   onTap: () {
-                    if (!isLoggedIn) {
-                      _showLoginRequiredDialog(
-                        context,
-                        'để xem danh sách tin bài và địa điểm đã lưu',
-                      );
-                      return;
-                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(

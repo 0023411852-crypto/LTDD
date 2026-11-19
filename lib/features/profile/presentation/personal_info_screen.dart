@@ -251,28 +251,28 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.lock_outline_rounded,
-                    size: 54,
+                    Icons.account_circle_outlined,
+                    size: 58,
                     color: Color(0xFF2563EB),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Yêu cầu đăng nhập',
+                  'Chưa có thông tin cá nhân',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 19,
                     fontWeight: FontWeight.bold,
                     color: textColor,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Khách hàng chưa đăng nhập không thể truy cập vào thông tin cá nhân. Vui lòng đăng nhập để tiếp tục.',
+                  'Bạn đang sử dụng ứng dụng dưới tư cách Khách. Khách chưa có thông tin nào để xem hay chỉnh sửa, vui lòng đăng nhập để tạo và quản lý hồ sơ cá nhân của bạn.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     color: subTextColor,
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -281,7 +281,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
