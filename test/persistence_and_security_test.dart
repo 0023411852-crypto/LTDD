@@ -251,4 +251,49 @@ void main() {
       expect(savedCities != null && savedCities.isNotEmpty, true);
     });
   });
+
+  group('6. Profile Privacy & Account Isolation Test (Mỗi tài khoản độc lập, không dùng chung thông tin cá nhân)', () {
+    test('Người dùng A cập nhật SĐT -> Đăng xuất -> Người dùng B / Google đăng nhập: Không bị rò rỉ SĐT hay Tên của A', () async {
+      SharedPreferences.setMockInitialValues({});
+      final authProvider = AuthProvider();
+
+      // 1. Tài khoản A đăng ký và cập nhật SĐT & Tên
+      final regA = await authProvider.register('usera@example.com', 'Pass123456', name: 'Người Dùng A');
+      expect(regA, true);
+      expect(authProvider.displayName, 'Người Dùng A');
+
+      await authProvider.updateProfile(
+        name: 'Người Dùng A Chính Chủ',
+        phone: '0912345678',
+        bio: 'Bio của A',
+      );
+      expect(authProvider.phoneNumber, '0912345678');
+
+      // 2. A đăng xuất
+      await authProvider.signOut();
+      expect(authProvider.isAuthenticated, false);
+      expect(authProvider.phoneNumber, '');
+
+      // 3. Tài khoản B (hoặc tài khoản Google mới) đăng ký/đăng nhập
+      final regB = await authProvider.register('userb_google@gmail.com', 'PassB123456', name: 'Google User B');
+      expect(regB, true);
+
+      // Bắt buộc: Tài khoản B KHÔNG ĐƯỢC kế thừa SĐT hay Bio của A
+      expect(authProvider.displayName, 'Google User B');
+      expect(authProvider.phoneNumber, '');
+      expect(authProvider.bio, '');
+
+      // 4. B cập nhật SĐT riêng của B
+      await authProvider.updateProfile(phone: '0999888777');
+      expect(authProvider.phoneNumber, '0999888777');
+
+      // 5. B đăng xuất -> A đăng nhập lại: Mỗi tài khoản giữ nguyên thông tin riêng của mình
+      await authProvider.signOut();
+      final loginA = await authProvider.signIn('usera@example.com', 'Pass123456');
+      expect(loginA, true);
+      expect(authProvider.displayName, 'Người Dùng A Chính Chủ');
+      expect(authProvider.phoneNumber, '0912345678');
+      expect(authProvider.bio, 'Bio của A');
+    });
+  });
 }

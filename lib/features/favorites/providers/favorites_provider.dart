@@ -148,16 +148,6 @@ class FavoritesProvider extends ChangeNotifier {
           } catch (_) {}
         }
         if (_currentUid == null) notifyListeners();
-      } else if (_currentUid == null) {
-        // Mặc định cho khách mới các địa điểm tiêu biểu
-        _favoriteCities.addAll([
-          WeatherService.cities[0], // Hà Nội
-          WeatherService.cities[1], // TP. Hồ Chí Minh
-          WeatherService.cities[3], // Quần đảo Hoàng Sa (Đà Nẵng)
-          WeatherService.cities[4], // Quần đảo Trường Sa (Khánh Hòa)
-        ]);
-        await _saveGuestCities();
-        if (_currentUid == null) notifyListeners();
       }
     } catch (_) {}
   }
@@ -255,16 +245,6 @@ class FavoritesProvider extends ChangeNotifier {
         if (!mergedCities.any((m) => isSameCity(m, c))) {
           mergedCities.insert(0, c);
         }
-      }
-
-      // Nếu tài khoản mới hoàn toàn chưa có địa điểm nào, gán mặc định
-      if (mergedCities.isEmpty) {
-        mergedCities.addAll([
-          WeatherService.cities[0],
-          WeatherService.cities[1],
-          WeatherService.cities[3],
-          WeatherService.cities[4],
-        ]);
       }
 
       // 5. Cập nhật state in-memory (Bảo lưu cả các thao tác phát sinh trong khi đang đồng bộ)

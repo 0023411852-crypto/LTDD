@@ -118,8 +118,11 @@ class NotificationsProvider extends ChangeNotifier {
       _status = NotificationsStatus.success;
       await _saveLocalNotifications();
     } catch (error) {
-      _status = NotificationsStatus.error;
-      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      debugPrint('NotificationsProvider.load error: $error');
+      // Cơ chế Offline-First: nếu gặp lỗi mạng hoặc phân quyền Firebase,
+      // ứng dụng an toàn hiển thị dữ liệu cục bộ đã lưu, không làm hỏng giao diện.
+      _errorMessage = '';
+      _status = NotificationsStatus.success;
     }
     notifyListeners();
   }

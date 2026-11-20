@@ -41,16 +41,24 @@
     },
     "users": {
       "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid",
+        ".read": "auth != null && $uid === auth.uid",
+        ".write": "auth != null && $uid === auth.uid",
+        "profile": {
+          ".read": "auth != null && $uid === auth.uid",
+          ".write": "auth != null && $uid === auth.uid"
+        },
         "favorites": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid",
+          ".read": "auth != null && $uid === auth.uid",
+          ".write": "auth != null && $uid === auth.uid",
           ".indexOn": ["link", "category"]
         },
+        "favorite_cities": {
+          ".read": "auth != null && $uid === auth.uid",
+          ".write": "auth != null && $uid === auth.uid"
+        },
         "notifications": {
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid",
+          ".read": "auth != null && $uid === auth.uid",
+          ".write": "auth != null && $uid === auth.uid",
           ".indexOn": ["createdAt", "isRead"],
           "$notificationId": {
             ".validate": "newData.hasChildren(['title', 'body', 'type', 'createdAt', 'isRead'])",

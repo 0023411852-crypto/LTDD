@@ -30,7 +30,10 @@ class AuthProvider extends ChangeNotifier {
 
   User? get user => _user;
   AuthStatus get status => _status;
-  bool get isAuthenticated => _user != null || _isCustomAdminLoggedIn;
+  bool get isAuthenticated =>
+      _user != null ||
+      _isCustomAdminLoggedIn ||
+      (_customUserEmail != null && _customUserEmail!.isNotEmpty);
   String get errorMessage => _errorMessage;
 
   String get displayName {
@@ -50,13 +53,33 @@ class AuthProvider extends ChangeNotifier {
 
   static const String rootAdminEmail = 'llinh0be@gmail.com';
 
-  String get email => _isCustomAdminLoggedIn
-      ? (_customUserEmail ?? rootAdminEmail)
-      : (_user?.email ?? '');
+  static String canonicalLocalUid(String email) {
+    final clean = email.trim().toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    return 'usr_$clean';
+  }
 
-  String get uid =>
-      _user?.uid ??
-      (_isCustomAdminLoggedIn ? (_customUserUid ?? 'admin_root_sys') : '');
+  String get email {
+    if (_user != null && _user!.email != null && _user!.email!.isNotEmpty) {
+      return _user!.email!;
+    }
+    if (_customUserEmail != null && _customUserEmail!.isNotEmpty) {
+      return _customUserEmail!;
+    }
+    return _isCustomAdminLoggedIn ? rootAdminEmail : '';
+  }
+
+  String get uid {
+    if (_user != null && _user!.uid.isNotEmpty) {
+      return _user!.uid;
+    }
+    if (_customUserUid != null && _customUserUid!.isNotEmpty) {
+      return _customUserUid!;
+    }
+    if (_customUserEmail != null && _customUserEmail!.isNotEmpty) {
+      return canonicalLocalUid(_customUserEmail!);
+    }
+    return _isCustomAdminLoggedIn ? 'admin_root_sys' : '';
+  }
 
   String get phoneNumber => _customUserPhone ?? '';
   String get photoUrl => _customUserPhotoUrl ?? _user?.photoURL ?? '';
@@ -98,28 +121,42 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadProfilePrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _customUserName = prefs.getString('user_profile_name');
-      _customUserPhone = prefs.getString('user_profile_phone');
-      _customUserPhotoUrl = prefs.getString('user_profile_photo');
-      _customUserBio = prefs.getString('user_profile_bio');
 
-      // Khôi phục phiên đăng nhập nội bộ (Local Session) nếu có
+      // Dọn dẹp dứt điểm các key dùng chung cũ (global keys) để tránh rò rỉ thông tin giữa các tài khoản
+      await prefs.remove('user_profile_name');
+      await prefs.remove('user_profile_phone');
+      await prefs.remove('user_profile_photo');
+      await prefs.remove('user_profile_bio');
+
+      // Khôi phục phiên đăng nhập nội bộ (Local Session) nếu có và chưa có phiên đăng nhập trực tiếp
+      if (_customUserEmail != null || _user != null) {
+        notifyListeners();
+        return;
+      }
       final hasLocalSession = prefs.getBool('session_is_logged_in') ?? false;
-      if (hasLocalSession && _user == null) {
-        _customUserEmail = prefs.getString('session_user_email');
-        _customUserName = prefs.getString('session_user_name') ?? _customUserName;
-        _customUserUid = prefs.getString('session_user_uid');
-        final savedIsAdmin = prefs.getBool('session_is_admin') ?? false;
+      if (hasLocalSession && _user == null && _customUserEmail == null) {
+        final savedEmail = prefs.getString('session_user_email');
+        final savedUid = prefs.getString('session_user_uid');
+        if (savedEmail != null && savedEmail.isNotEmpty) {
+          _customUserEmail = savedEmail;
+          _customUserUid = (savedUid != null && savedUid.isNotEmpty)
+              ? savedUid
+              : canonicalLocalUid(savedEmail);
+          final savedIsAdmin = prefs.getBool('session_is_admin') ?? false;
 
-        // Chống giả mạo SharedPreferences (Tampering Guard):
-        // Dù file SharedPreferences trên máy root có bị hacker sửa session_is_admin = true,
-        // nếu email không phải chính xác là rootAdminEmail ('llinh0be@gmail.com') thì TUYỆT ĐỐI KHÔNG cấp quyền Admin.
-        if (savedIsAdmin && (_customUserEmail ?? '').trim().toLowerCase() == rootAdminEmail) {
-          _isCustomAdminLoggedIn = true;
-        } else {
-          _isCustomAdminLoggedIn = false;
+          // Chống giả mạo SharedPreferences (Tampering Guard):
+          if (savedIsAdmin && (_customUserEmail ?? '').trim().toLowerCase() == rootAdminEmail) {
+            _isCustomAdminLoggedIn = true;
+          } else {
+            _isCustomAdminLoggedIn = false;
+          }
+          _status = AuthStatus.authenticated;
+
+          // Tải thông tin cá nhân được cách ly theo đúng UID của phiên này
+          if (_customUserUid != null && _customUserUid!.isNotEmpty) {
+            await _loadProfileFromCloudOrPrefs(_customUserUid!);
+          }
         }
-        _status = AuthStatus.authenticated;
       }
       notifyListeners();
     } catch (_) {}
@@ -153,29 +190,49 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _saveProfilePrefs([String? targetUid]) async {
+    final effectiveUid = (targetUid != null && targetUid.isNotEmpty) ? targetUid : uid;
+    if (effectiveUid.isEmpty) return;
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      final suffix = (targetUid != null && targetUid.isNotEmpty) ? '_$targetUid' : '';
+      final emailKey = email.isNotEmpty ? canonicalLocalUid(email) : '';
+
+      // LƯU CÁCH LY CHẶT CHẼ THEO UID & EMAIL - TUYỆT ĐỐI KHÔNG GHI VÀO KEY TOÀN CỤC DÙNG CHUNG
       if (_customUserName != null) {
-        await prefs.setString('user_profile_name$suffix', _customUserName!);
-        await prefs.setString('user_profile_name', _customUserName!);
+        await prefs.setString('user_profile_name_$effectiveUid', _customUserName!);
+        if (emailKey.isNotEmpty && emailKey != effectiveUid) {
+          await prefs.setString('user_profile_name_$emailKey', _customUserName!);
+        }
       }
       if (_customUserPhone != null) {
-        await prefs.setString('user_profile_phone$suffix', _customUserPhone!);
-        await prefs.setString('user_profile_phone', _customUserPhone!);
+        await prefs.setString('user_profile_phone_$effectiveUid', _customUserPhone!);
+        if (emailKey.isNotEmpty && emailKey != effectiveUid) {
+          await prefs.setString('user_profile_phone_$emailKey', _customUserPhone!);
+        }
       }
       if (_customUserPhotoUrl != null) {
-        await prefs.setString('user_profile_photo$suffix', _customUserPhotoUrl!);
-        await prefs.setString('user_profile_photo', _customUserPhotoUrl!);
+        await prefs.setString('user_profile_photo_$effectiveUid', _customUserPhotoUrl!);
+        if (emailKey.isNotEmpty && emailKey != effectiveUid) {
+          await prefs.setString('user_profile_photo_$emailKey', _customUserPhotoUrl!);
+        }
       }
       if (_customUserBio != null) {
-        await prefs.setString('user_profile_bio$suffix', _customUserBio!);
-        await prefs.setString('user_profile_bio', _customUserBio!);
+        await prefs.setString('user_profile_bio_$effectiveUid', _customUserBio!);
+        if (emailKey.isNotEmpty && emailKey != effectiveUid) {
+          await prefs.setString('user_profile_bio_$emailKey', _customUserBio!);
+        }
       }
+
+      // Xóa các key global cũ để không bao giờ bị tài khoản khác đọc nhầm
+      await prefs.remove('user_profile_name');
+      await prefs.remove('user_profile_phone');
+      await prefs.remove('user_profile_photo');
+      await prefs.remove('user_profile_bio');
     } catch (_) {}
   }
 
   Future<void> _saveProfileToCloud(String targetUid) async {
+    if (targetUid.isEmpty) return;
     try {
       final dbRef = FirebaseDatabase.instance.ref('users/$targetUid/profile');
       await dbRef.update({
@@ -192,23 +249,40 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _loadProfileFromCloudOrPrefs(String targetUid) async {
+    if (targetUid.isEmpty) return;
+
+    // Reset sạch các trường cá nhân trong RAM trước khi tải thông tin của UID mới
+    _customUserName = null;
+    _customUserPhone = null;
+    _customUserPhotoUrl = null;
+    _customUserBio = null;
+
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Dọn dẹp key global dùng chung cũ nếu còn sót lại
+      await prefs.remove('user_profile_name');
+      await prefs.remove('user_profile_phone');
+      await prefs.remove('user_profile_photo');
+      await prefs.remove('user_profile_bio');
+
+      // ĐỌC DỮ LIỆU ĐỘC LẬP THEO UID / EMAIL - KHÔNG FALLBACK VỀ KEY CHUNG
+      final emailKey = email.isNotEmpty ? canonicalLocalUid(email) : '';
       final localName = prefs.getString('user_profile_name_$targetUid') ??
-          prefs.getString('user_profile_name');
+          (emailKey.isNotEmpty ? prefs.getString('user_profile_name_$emailKey') : null);
       final localPhone = prefs.getString('user_profile_phone_$targetUid') ??
-          prefs.getString('user_profile_phone');
+          (emailKey.isNotEmpty ? prefs.getString('user_profile_phone_$emailKey') : null);
       final localPhoto = prefs.getString('user_profile_photo_$targetUid') ??
-          prefs.getString('user_profile_photo');
+          (emailKey.isNotEmpty ? prefs.getString('user_profile_photo_$emailKey') : null);
       final localBio = prefs.getString('user_profile_bio_$targetUid') ??
-          prefs.getString('user_profile_bio');
+          (emailKey.isNotEmpty ? prefs.getString('user_profile_bio_$emailKey') : null);
 
       if (localName != null && localName.trim().isNotEmpty) _customUserName = localName.trim();
       if (localPhone != null && localPhone.trim().isNotEmpty) _customUserPhone = localPhone.trim();
       if (localPhoto != null && localPhoto.trim().isNotEmpty) _customUserPhotoUrl = localPhoto.trim();
       if (localBio != null && localBio.trim().isNotEmpty) _customUserBio = localBio.trim();
 
-      // Cloud load from Firebase Realtime Database
+      // Tải từ Firebase Realtime Database nếu đã đồng bộ trên Cloud
       final dbRef = FirebaseDatabase.instance.ref('users/$targetUid/profile');
       final snapshot = await dbRef.get().timeout(const Duration(seconds: 8));
       if (snapshot.exists && snapshot.value is Map) {
@@ -242,11 +316,28 @@ class AuthProvider extends ChangeNotifier {
 
   void _onAuthStateChanged(User? firebaseUser) async {
     _user = firebaseUser;
-    if (firebaseUser != null) {
+    if (firebaseUser != null && firebaseUser.uid.isNotEmpty) {
       _status = AuthStatus.authenticated;
+      _customUserEmail = firebaseUser.email ?? _customUserEmail;
+      _customUserUid = firebaseUser.uid;
+      _isCustomAdminLoggedIn = ((firebaseUser.email ?? '').trim().toLowerCase() == rootAdminEmail);
+
+      // Nạp thông tin cá nhân riêng biệt của tài khoản Firebase Auth này
       await _loadProfileFromCloudOrPrefs(firebaseUser.uid);
-    } else if (!_isCustomAdminLoggedIn && _customUserEmail == null) {
+      if (_customUserName == null || _customUserName!.trim().isEmpty) {
+        _customUserName = firebaseUser.displayName ?? firebaseUser.email?.split('@').first;
+      }
+      if (_customUserPhotoUrl == null || _customUserPhotoUrl!.trim().isEmpty) {
+        _customUserPhotoUrl = firebaseUser.photoURL;
+      }
+    } else if (firebaseUser == null && !_isCustomAdminLoggedIn && _customUserEmail == null) {
       _status = AuthStatus.unauthenticated;
+      _customUserName = null;
+      _customUserPhone = null;
+      _customUserPhotoUrl = null;
+      _customUserBio = null;
+      _customUserEmail = null;
+      _customUserUid = null;
     }
     notifyListeners();
   }
@@ -307,14 +398,18 @@ class AuthProvider extends ChangeNotifier {
           email: normalizedEmail,
           password: normalizedPassword,
         );
-        _isCustomAdminLoggedIn = false;
+        final rawUid = _user?.uid;
+        final effectiveUid = (rawUid != null && rawUid.trim().isNotEmpty)
+            ? rawUid.trim()
+            : canonicalLocalUid(normalizedEmail);
+        _customUserUid = effectiveUid;
+        _isCustomAdminLoggedIn = (normalizedEmail == rootAdminEmail);
         _customUserEmail = normalizedEmail;
-        _customUserUid = _user?.uid;
         _status = AuthStatus.authenticated;
         _errorMessage = '';
 
         // Tải lại thông tin cá nhân đã đổi trước đó từ Database / Prefs
-        await _loadProfileFromCloudOrPrefs(_user?.uid ?? 'uid_$normalizedEmail');
+        await _loadProfileFromCloudOrPrefs(effectiveUid);
         if (_customUserName == null || _customUserName!.trim().isEmpty) {
           _customUserName = _user?.displayName ?? normalizedEmail.split('@').first;
         }
@@ -322,7 +417,7 @@ class AuthProvider extends ChangeNotifier {
         await _saveActiveSession(
           normalizedEmail,
           _customUserName!,
-          _user?.uid ?? 'uid_$normalizedEmail',
+          effectiveUid,
           isAdmin: isAdmin,
         );
         notifyListeners();
@@ -391,17 +486,21 @@ class AuthProvider extends ChangeNotifier {
             _user = auth.currentUser;
           } catch (_) {}
         }
+        final rawUid = credential.user?.uid;
+        final resolvedUid = (rawUid != null && rawUid.trim().isNotEmpty)
+            ? rawUid.trim()
+            : 'usr_${normalizedEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
         _customUserEmail = normalizedEmail;
         _customUserName = normalizedName;
-        _customUserUid = credential.user?.uid;
+        _customUserUid = resolvedUid;
         _status = AuthStatus.authenticated;
         _errorMessage = '';
 
-        await _saveLocalAccountRecord(normalizedEmail, normalizedPassword, normalizedName);
+        await _saveLocalAccountRecord(normalizedEmail, normalizedPassword, normalizedName, uid: resolvedUid);
         await _saveActiveSession(
           normalizedEmail,
           normalizedName,
-          credential.user?.uid ?? 'uid_$normalizedEmail',
+          resolvedUid,
         );
         notifyListeners();
         return true;
@@ -507,8 +606,10 @@ class AuthProvider extends ChangeNotifier {
       // Hợp nhất dữ liệu vào 1 tài khoản duy nhất (Merge Data)
       mergedMap['email'] = normalized;
       mergedMap['uid'] = mergedMap['uid'] ?? uid;
-      if (name.isNotEmpty && (mergedMap['name'] == null || (mergedMap['name'] as String).isEmpty)) {
-        mergedMap['name'] = name;
+      if (name.isNotEmpty) {
+        if (isGoogleLinked || mergedMap['name'] == null || (mergedMap['name'] as String).isEmpty) {
+          mergedMap['name'] = name;
+        }
       }
       if (password != null && password.isNotEmpty) {
         mergedMap['password'] = password;
@@ -638,16 +739,18 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _saveLocalAccountRecord(
     String email,
     String password,
-    String name,
-  ) async {
+    String name, {
+    String? uid,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      final resolvedUid = uid ?? 'usr_${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
       final newRecord = jsonEncode({
         'email': email,
         'password': password,
         'name': name,
-        'uid': 'fb_${email.hashCode}',
+        'uid': resolvedUid,
       });
       usersJson.removeWhere((item) {
         try {
@@ -675,13 +778,17 @@ class AuthProvider extends ChangeNotifier {
               final uid = map['uid'] as String? ?? 'local_${email.hashCode}';
 
               _customUserEmail = email;
-              _customUserName = name;
               _customUserUid = uid;
               _isCustomAdminLoggedIn = (email.trim().toLowerCase() == rootAdminEmail);
               _status = AuthStatus.authenticated;
               _errorMessage = '';
 
-              await _saveActiveSession(email, name, uid, isAdmin: _isCustomAdminLoggedIn);
+              await _loadProfileFromCloudOrPrefs(uid);
+              if (_customUserName == null || _customUserName!.trim().isEmpty) {
+                _customUserName = name;
+              }
+
+              await _saveActiveSession(email, _customUserName!, uid, isAdmin: _isCustomAdminLoggedIn);
               notifyListeners();
               return true;
             } else {
@@ -762,7 +869,8 @@ class AuthProvider extends ChangeNotifier {
       );
 
       final email = googleUser.email.trim().toLowerCase();
-      final name = googleUser.displayName ?? email.split('@').first;
+      final googleDisplayName = googleUser.displayName?.trim() ?? '';
+      final name = googleDisplayName.isNotEmpty ? googleDisplayName : email.split('@').first;
       final photo = googleUser.photoUrl;
 
       // 1. Kiểm tra tài khoản đã tồn tại trước đó chưa (Đăng ký bằng Email trước đó)
@@ -819,14 +927,15 @@ class AuthProvider extends ChangeNotifier {
 
       // 2. Đồng nhất User ID (Canonical UID) duy nhất theo Email:
       // Giữ nguyên UID đã đăng ký bằng Email trước đó để KHÔNG BỊ TÁCH THÀNH 2 USER
-      final String unifiedUid = userCredential?.user?.uid ??
-          existingAccount?['uid'] ??
-          'usr_${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+      final rawGoogleUid = userCredential?.user?.uid;
+      final String unifiedUid = (rawGoogleUid != null && rawGoogleUid.trim().isNotEmpty)
+          ? rawGoogleUid.trim()
+          : (existingAccount?['uid'] ?? canonicalLocalUid(email));
 
       // 3. Hợp nhất thông tin tài khoản (Unified Account Record)
       await _mergeOrSaveLocalAccount(
         email: email,
-        name: existingAccount?['name'] ?? name,
+        name: name,
         uid: unifiedUid,
         photoUrl: photo ?? existingAccount?['photoUrl'],
         googleId: googleUser.id,
@@ -841,14 +950,17 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.authenticated;
       _errorMessage = '';
 
-      // TẢI LẠI THÔNG TIN CÁ NHÂN ĐÃ ĐỔI TỪ DATABASE (ĐẢM BẢO TÊN ĐỔI KHÔNG BỊ GOOGLE ĐÈ MẤT)
+      // Tải lại thông tin cá nhân của đúng tài khoản này (không dùng chung với tài khoản khác)
       await _loadProfileFromCloudOrPrefs(unifiedUid);
 
-      if (_customUserName == null || _customUserName!.trim().isEmpty) {
-        _customUserName = existingAccount?['name'] ?? name;
+      // ĐĂNG NHẬP GOOGLE: Luôn ưu tiên Tên chính thức từ Google Profile
+      if (googleDisplayName.isNotEmpty) {
+        _customUserName = googleDisplayName;
+      } else if (_customUserName == null || _customUserName!.trim().isEmpty) {
+        _customUserName = name;
       }
-      if (_customUserPhotoUrl == null || _customUserPhotoUrl!.trim().isEmpty) {
-        _customUserPhotoUrl = photo ?? existingAccount?['photoUrl'];
+      if (photo != null && photo.isNotEmpty) {
+        _customUserPhotoUrl = photo;
       }
       await _saveProfileToCloud(unifiedUid);
       await _saveProfilePrefs(unifiedUid);
@@ -859,11 +971,6 @@ class AuthProvider extends ChangeNotifier {
         unifiedUid,
         isAdmin: _isCustomAdminLoggedIn,
       );
-      if (photo != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_profile_photo', photo);
-        await prefs.setString('user_profile_name', _customUserName!);
-      }
 
       notifyListeners();
       return true;
@@ -995,6 +1102,23 @@ class AuthProvider extends ChangeNotifier {
     await _saveProfilePrefs(targetUid);
     if (targetUid.isNotEmpty) {
       await _saveProfileToCloud(targetUid);
+    }
+
+    // Đồng bộ tên mới vào danh sách tài khoản local (nếu là tài khoản offline/local)
+    if (name != null && name.trim().isNotEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final usersJson = prefs.getStringList('local_registered_users') ?? [];
+        for (int i = 0; i < usersJson.length; i++) {
+          final map = jsonDecode(usersJson[i]) as Map<String, dynamic>;
+          if (map['email'] == email || map['uid'] == targetUid) {
+            map['name'] = name.trim();
+            usersJson[i] = jsonEncode(map);
+            await prefs.setStringList('local_registered_users', usersJson);
+            break;
+          }
+        }
+      } catch (_) {}
     }
 
     final user = _user;
