@@ -994,69 +994,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> signInWithFacebook() async {
-    _status = AuthStatus.authenticating;
-    _errorMessage = '';
+    _status = AuthStatus.unauthenticated;
+    _errorMessage =
+        'Tính năng đăng nhập nhanh bằng Facebook đang được phát triển và sẽ có mặt trong bản cập nhật tiếp theo.';
     notifyListeners();
-
-    final auth = _auth;
-    if (auth == null) {
-      _errorMessage = 'Dịch vụ xác thực Firebase chưa sẵn sàng.';
-      _status = AuthStatus.unauthenticated;
-      notifyListeners();
-      return false;
-    }
-
-    try {
-      // Cách chuẩn của Firebase Auth SDK: mở cửa sổ xác thực Facebook OAuth
-      final facebookProvider = FacebookAuthProvider();
-      final userCredential = await auth.signInWithProvider(facebookProvider);
-      final user = userCredential.user;
-
-      if (user != null) {
-        _user = user;
-        final email = user.email ?? 'fb_${user.uid}@facebook.com';
-        final name = user.displayName ?? 'Facebook User';
-        final photo = user.photoURL;
-
-        _customUserEmail = email;
-        _customUserName = name;
-        _customUserPhotoUrl = photo;
-        _customUserUid = user.uid;
-        _isCustomAdminLoggedIn = false;
-        _status = AuthStatus.authenticated;
-        _errorMessage = '';
-
-        await _saveActiveSession(email, name, user.uid, isAdmin: false);
-        if (photo != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_profile_photo', photo);
-          await prefs.setString('user_profile_name', name);
-        }
-
-        notifyListeners();
-        return true;
-      }
-
-      _status = AuthStatus.unauthenticated;
-      notifyListeners();
-      return false;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'operation-not-allowed' ||
-          e.code == 'admin-restricted-operation') {
-        _errorMessage =
-            'Chưa bật Facebook Sign-In trên Firebase Console. Cần vào Authentication > Sign-in method > Facebook để bật và cấu hình App ID/Secret.';
-      } else {
-        _errorMessage = _getVietnameseErrorMessage(e.code, e.message);
-      }
-      _status = AuthStatus.unauthenticated;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = 'Đăng nhập Facebook thất bại: $e';
-      _status = AuthStatus.unauthenticated;
-      notifyListeners();
-      return false;
-    }
+    return false;
   }
 
   Future<void> signOut() async {
@@ -1161,6 +1103,7 @@ class AuthProvider extends ChangeNotifier {
     }
 
     final targetUid = uid;
+    final targetEmail = email.trim().toLowerCase();
     final user = _user ?? _auth?.currentUser;
 
     _status = AuthStatus.authenticating;
@@ -1169,7 +1112,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       // 1. Dọn dẹp dữ liệu người dùng trên Firebase Realtime Database
-      if (targetUid != null && targetUid.isNotEmpty) {
+      if (targetUid.isNotEmpty) {
         try {
           final db = FirebaseDatabase.instance.ref('users/$targetUid');
           await db.remove().timeout(const Duration(seconds: 10));
@@ -1194,13 +1137,54 @@ class AuthProvider extends ChangeNotifier {
         }
       }
 
-      // 3. Xóa thông tin lưu trữ cục bộ
+      // 3. Xóa triệt để thông tin tài khoản khỏi danh sách hệ thống và cache máy
       await _clearActiveSession();
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('profile_name');
-      await prefs.remove('profile_phone');
-      await prefs.remove('profile_photo');
-      await prefs.remove('profile_bio');
+
+      // Xóa khỏi danh sách tài khoản cục bộ (để Admin không còn thấy tài khoản đã xóa)
+      final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      usersJson.removeWhere((item) {
+        try {
+          final m = jsonDecode(item) as Map<String, dynamic>;
+          final mEmail = (m['email'] as String?)?.trim().toLowerCase() ?? '';
+          final mUid = (m['uid'] as String?)?.trim() ?? '';
+          return (targetEmail.isNotEmpty && mEmail == targetEmail) ||
+              (targetUid.isNotEmpty && mUid == targetUid);
+        } catch (_) {
+          return false;
+        }
+      });
+      await prefs.setStringList('local_registered_users', usersJson);
+
+      // Xóa sạch toàn bộ key cache cá nhân
+      final emailKey = targetEmail.isNotEmpty ? canonicalLocalUid(targetEmail) : '';
+      final keysToRemove = [
+        'profile_name', 'profile_phone', 'profile_photo', 'profile_bio',
+        'user_profile_name', 'user_profile_phone', 'user_profile_photo', 'user_profile_bio',
+        if (targetUid.isNotEmpty) ...[
+          'user_profile_name_$targetUid',
+          'user_profile_phone_$targetUid',
+          'user_profile_photo_$targetUid',
+          'user_profile_bio_$targetUid',
+          'favorite_articles_$targetUid',
+          'favorite_cities_$targetUid',
+          'search_history_$targetUid',
+          'local_app_notifications_$targetUid',
+        ],
+        if (emailKey.isNotEmpty) ...[
+          'user_profile_name_$emailKey',
+          'user_profile_phone_$emailKey',
+          'user_profile_photo_$emailKey',
+          'user_profile_bio_$emailKey',
+          'favorite_articles_$emailKey',
+          'favorite_cities_$emailKey',
+          'search_history_$emailKey',
+          'local_app_notifications_$emailKey',
+        ],
+      ];
+      for (final k in keysToRemove) {
+        await prefs.remove(k);
+      }
 
       try {
         await GoogleSignIn().signOut();
@@ -1218,6 +1202,83 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('deleteAccount error: $e');
       _errorMessage = 'Không thể xóa tài khoản: ${e.toString()}';
       _status = AuthStatus.authenticated;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Quản trị viên xóa một tài khoản người dùng khỏi hệ thống
+  Future<bool> deleteUserByAdmin(String targetEmail, {String? targetUid}) async {
+    final normalized = targetEmail.trim().toLowerCase();
+    if (normalized == rootAdminEmail) {
+      _errorMessage = 'Không thể xóa tài khoản Quản trị viên tối cao của hệ thống.';
+      notifyListeners();
+      return false;
+    }
+    if (!isAdmin) {
+      _errorMessage = 'Chỉ Quản trị viên mới có quyền xóa tài khoản của người dùng khác.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Xóa khỏi danh sách tài khoản hệ thống (local_registered_users)
+      final usersJson = prefs.getStringList('local_registered_users') ?? [];
+      usersJson.removeWhere((item) {
+        try {
+          final m = jsonDecode(item) as Map<String, dynamic>;
+          final mEmail = (m['email'] as String?)?.trim().toLowerCase() ?? '';
+          final mUid = (m['uid'] as String?)?.trim() ?? '';
+          return (mEmail == normalized) ||
+              (targetUid != null && targetUid.isNotEmpty && mUid == targetUid);
+        } catch (_) {
+          return false;
+        }
+      });
+      await prefs.setStringList('local_registered_users', usersJson);
+
+      // 2. Dọn sạch cache dữ liệu của user đó trên máy
+      final resolvedUid = (targetUid != null && targetUid.isNotEmpty)
+          ? targetUid
+          : canonicalLocalUid(normalized);
+      final emailKey = canonicalLocalUid(normalized);
+
+      final keysToRemove = [
+        'user_profile_name_$resolvedUid',
+        'user_profile_phone_$resolvedUid',
+        'user_profile_photo_$resolvedUid',
+        'user_profile_bio_$resolvedUid',
+        'favorite_articles_$resolvedUid',
+        'favorite_cities_$resolvedUid',
+        'search_history_$resolvedUid',
+        'local_app_notifications_$resolvedUid',
+        'user_profile_name_$emailKey',
+        'user_profile_phone_$emailKey',
+        'user_profile_photo_$emailKey',
+        'user_profile_bio_$emailKey',
+        'favorite_articles_$emailKey',
+        'favorite_cities_$emailKey',
+        'search_history_$emailKey',
+        'local_app_notifications_$emailKey',
+      ];
+      for (final k in keysToRemove) {
+        await prefs.remove(k);
+      }
+
+      // 3. Xóa trên Firebase Realtime Database nếu có
+      if (resolvedUid.isNotEmpty) {
+        try {
+          final db = FirebaseDatabase.instance.ref('users/$resolvedUid');
+          await db.remove().timeout(const Duration(seconds: 5));
+        } catch (_) {}
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Lỗi khi xóa tài khoản: $e';
       notifyListeners();
       return false;
     }

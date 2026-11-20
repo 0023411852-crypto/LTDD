@@ -295,5 +295,46 @@ void main() {
       expect(authProvider.phoneNumber, '0912345678');
       expect(authProvider.bio, 'Bio của A');
     });
+
+    test('Xóa tài khoản: Dọn sạch hoàn toàn khỏi danh sách hệ thống, Admin không còn thấy tài khoản đã xóa', () async {
+      SharedPreferences.setMockInitialValues({});
+      final authProvider = AuthProvider();
+
+      // Đăng ký tài khoản User X
+      await authProvider.register('userx@example.com', 'Pass123456', name: 'User X');
+      var list = await authProvider.getRegisteredUsersList();
+      expect(list.any((u) => u['email'] == 'userx@example.com'), true);
+
+      // User X thực hiện xóa tài khoản
+      final deleted = await authProvider.deleteAccount();
+      expect(deleted, true);
+
+      // Kiểm tra: Admin nạp danh sách không còn User X
+      list = await authProvider.getRegisteredUsersList();
+      expect(list.any((u) => u['email'] == 'userx@example.com'), false);
+    });
+
+    test('Quản trị viên xóa tài khoản người dùng trực tiếp qua Admin Panel', () async {
+      SharedPreferences.setMockInitialValues({});
+      final authProvider = AuthProvider();
+
+      // Đăng nhập Admin
+      await authProvider.signInAsAdmin();
+      expect(authProvider.isAdmin, true);
+
+      // Giả lập hệ thống có 1 user thường
+      await authProvider.register('baduser@example.com', 'Pass123456', name: 'Bad User');
+      await authProvider.signInAsAdmin();
+
+      var list = await authProvider.getRegisteredUsersList();
+      expect(list.any((u) => u['email'] == 'baduser@example.com'), true);
+
+      // Admin bấm xóa user
+      final adminDeleted = await authProvider.deleteUserByAdmin('baduser@example.com');
+      expect(adminDeleted, true);
+
+      list = await authProvider.getRegisteredUsersList();
+      expect(list.any((u) => u['email'] == 'baduser@example.com'), false);
+    });
   });
 }

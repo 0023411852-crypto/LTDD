@@ -83,9 +83,6 @@ class SearchProvider extends ChangeNotifier {
       if (currentSeq != _loadSequence) return;
       if (saved != null) {
         _history = List.from(saved);
-      } else if (_currentUid == null) {
-        // Gợi ý chủ đề phổ biến ban đầu cho Khách mới
-        _history = ['thời tiết', 'Hoàng Sa', 'Trường Sa', 'tin thể thao'];
       } else {
         _history = [];
       }

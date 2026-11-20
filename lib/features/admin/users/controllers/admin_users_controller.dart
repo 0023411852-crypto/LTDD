@@ -17,4 +17,8 @@ class AdminUsersController {
   Future<List<Map<String, dynamic>>> getRegisteredUsers() async {
     return authProvider.getRegisteredUsersList();
   }
+
+  Future<bool> deleteUser(String email, {String? uid}) {
+    return authProvider.deleteUserByAdmin(email, targetUid: uid);
+  }
 }

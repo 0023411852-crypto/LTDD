@@ -119,24 +119,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _signInWithFacebook() async {
-    setState(() => _loading = true);
-    final auth = context.read<AuthProvider>();
-    final success = await auth.signInWithFacebook();
-    if (!mounted) return;
-    setState(() => _loading = false);
-
-    if (success) {
-      _navigateAfterAuth('Đăng nhập Facebook thành công!');
-    } else if (auth.errorMessage.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.errorMessage),
-          backgroundColor: Colors.red.shade700,
-          duration: const Duration(seconds: 5),
-        ),
-      );
-    }
+  void _signInWithFacebook() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Tính năng đăng nhập nhanh bằng Facebook đang được phát triển và sẽ sớm ra mắt.'),
+        backgroundColor: Color(0xFF1877F2),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
 
@@ -731,7 +722,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 10),
                       Text(
-                        'Hỗ trợ đăng nhập nhanh bằng Google và Facebook.',
+                        'Hỗ trợ đăng nhập nhanh bằng Google (Facebook đang phát triển).',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 11, color: subColor),
                       ),

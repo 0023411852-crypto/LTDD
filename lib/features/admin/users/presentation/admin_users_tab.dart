@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../controllers/admin_users_controller.dart';
 
-class AdminUsersTab extends StatelessWidget {
+class AdminUsersTab extends StatefulWidget {
   final AdminUsersController controller;
   final Color surfaceColor;
   final Color textColor;
@@ -23,7 +23,69 @@ class AdminUsersTab extends StatelessWidget {
   });
 
   @override
+  State<AdminUsersTab> createState() => _AdminUsersTabState();
+}
+
+class _AdminUsersTabState extends State<AdminUsersTab> {
+  void _confirmDeleteUser(BuildContext context, String email, String? uid) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Xóa tài khoản?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "$email" khỏi hệ thống không?\n\nToàn bộ dữ liệu (yêu thích, thông báo, thông tin cá nhân) của tài khoản này sẽ bị xóa hoàn toàn.',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              final success = await widget.controller.deleteUser(email, uid: uid);
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success
+                        ? 'Đã xóa tài khoản $email khỏi hệ thống.'
+                        : 'Không thể xóa tài khoản này.'),
+                    backgroundColor: success ? const Color(0xFF059669) : Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            child: const Text('Xác nhận xóa'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final surfaceColor = widget.surfaceColor;
+    final textColor = widget.textColor;
+    final subTextColor = widget.subTextColor;
+    final borderColor = widget.borderColor;
+    final chipColor = widget.chipColor;
+    final inputFillColor = widget.inputFillColor;
+
     final user = controller.user;
     final isLoggedIn = controller.isAuthenticated;
 
@@ -320,6 +382,21 @@ class AdminUsersTab extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              if (!isUserAdmin) ...[
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded,
+                                      color: Colors.redAccent, size: 20),
+                                  tooltip: 'Xóa tài khoản này',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () => _confirmDeleteUser(
+                                    context,
+                                    uEmail,
+                                    u['uid'] as String?,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         );
