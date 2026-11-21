@@ -133,19 +133,22 @@ class Article {
     required String link,
     required String description,
     required String source,
+    String? imageUrl,
     DateTime? publishedAt,
     DateTime? expiresAt,
     String category = 'Tin tức',
     List<String> tags = const [],
     List<String> inlineImageUrls = const [],
   }) {
-    String? img;
-    final imgMatch = RegExp(r'src="([^"]+)"', caseSensitive: false).firstMatch(description);
-    if (imgMatch != null) {
-      final potentialUrl = imgMatch.group(1)?.trim();
-      if (potentialUrl != null &&
-          (potentialUrl.startsWith('https://') || potentialUrl.startsWith('http://'))) {
-        img = potentialUrl;
+    String? img = imageUrl;
+    if (img == null || img.isEmpty) {
+      final imgMatch = RegExp('src=["\']([^"\']+)["\']', caseSensitive: false).firstMatch(description);
+      if (imgMatch != null) {
+        final potentialUrl = imgMatch.group(1)?.trim();
+        if (potentialUrl != null &&
+            (potentialUrl.startsWith('https://') || potentialUrl.startsWith('http://'))) {
+          img = potentialUrl;
+        }
       }
     }
 
@@ -167,7 +170,7 @@ class Article {
   }
 
   static String _sanitizeHtml(String text) {
-    return text
+    var cleaned = text
         .replaceAll(RegExp(r'<[^>]*>'), '') // Strip HTML tags
         .replaceAll('&nbsp;', ' ')
         .replaceAll('&quot;', '"')
@@ -175,7 +178,37 @@ class Article {
         .replaceAll('&lt;', '<')
         .replaceAll('&gt;', '>')
         .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'")
         .replaceAll('&hellip;', '...')
-        .trim();
+        .replaceAll('&ndash;', '–')
+        .replaceAll('&mdash;', '—')
+        .replaceAll('&ldquo;', '“')
+        .replaceAll('&rdquo;', '”')
+        .replaceAll('&lsquo;', '‘')
+        .replaceAll('&rsquo;', '’');
+
+    // Decode decimal numeric entities: &#1234;
+    cleaned = cleaned.replaceAllMapped(RegExp(r'&#(\d+);'), (match) {
+      final code = int.tryParse(match.group(1) ?? '');
+      if (code != null && code > 0) {
+        try {
+          return String.fromCharCode(code);
+        } catch (_) {}
+      }
+      return match.group(0)!;
+    });
+
+    // Decode hex numeric entities: &#x1f600;
+    cleaned = cleaned.replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'), (match) {
+      final code = int.tryParse(match.group(1) ?? '', radix: 16);
+      if (code != null && code > 0) {
+        try {
+          return String.fromCharCode(code);
+        } catch (_) {}
+      }
+      return match.group(0)!;
+    });
+
+    return cleaned.trim();
   }
 }

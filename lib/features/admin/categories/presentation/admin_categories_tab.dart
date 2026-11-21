@@ -24,6 +24,8 @@ class AdminCategoriesTab extends StatelessWidget {
 
   IconData _catIcon(String id) {
     switch (id) {
+      case 'all':
+        return Icons.auto_awesome_motion_rounded;
       case 'moi-nhat':
         return Icons.fiber_new_rounded;
       case 'thoi-su':
@@ -83,34 +85,53 @@ class AdminCategoriesTab extends StatelessWidget {
     final selectedCatIds = controller.selectedCategoryIds;
     final isLoading = controller.isLoading;
 
+    final enabledCount = categories.where((c) => c.isEnabled).length;
+
     return Scaffold(
       backgroundColor: bgColor,
       body: categories.isEmpty && !isLoading
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.category_outlined,
-                      size: 60, color: Color(0xFFCBD5E1)),
-                  const SizedBox(height: 14),
-                  Text('Chưa tải được danh mục',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: subTextColor)),
-                  const SizedBox(height: 8),
-                  const Text('Kiểm tra kết nối internet',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: () => controller.refreshNews(),
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Thử lại'),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1654F0),
-                        foregroundColor: Colors.white),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(28.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E60F2).withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.rss_feed_rounded,
+                          size: 54, color: Color(0xFF1E60F2)),
+                    ),
+                    const SizedBox(height: 18),
+                    Text('Chưa kết nối nguồn tin RSS nào',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: textColor)),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Hệ thống hiện không cài sẵn nguồn RSS mặc định trong mã nguồn. Bạn có thể tự do kết nối các nguồn tin từ bên ngoài (VnExpress, Tuổi Trẻ, Thanh Niên, Dân Trí...) theo danh mục bạn muốn.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, height: 1.5, color: subTextColor),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddCategoryDialog(context),
+                      icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                      label: const Text('Thêm nguồn tin mới'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E60F2),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           : ListView(
@@ -125,14 +146,14 @@ class AdminCategoriesTab extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Kết nối & Đồng bộ nguồn tin (${selectedCatIds.length}/${categories.length})',
+                            'Quản trị nguồn tin RSS ($enabledCount/${categories.length} đang bật)',
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 color: textColor),
                           ),
                           Text(
-                            'Tích chọn nhiều danh mục để gom tin từ nhiều nguồn cùng lúc',
+                            'Gạt công tắc để Bật/Tắt nguồn tin lấy về ứng dụng',
                             style:
                                 TextStyle(fontSize: 12, color: subTextColor),
                             overflow: TextOverflow.ellipsis,
@@ -201,20 +222,32 @@ class AdminCategoriesTab extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        icon: const Icon(Icons.restore_rounded, size: 16),
+                        icon: const Icon(Icons.delete_sweep_rounded, size: 16),
                         label: const Text(
-                          'Mặc định',
+                          'Xóa tất cả',
                           style: TextStyle(fontSize: 12),
                         ),
                         onPressed: () async {
-                          await controller.restoreDefaultCategories();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Đã khôi phục danh sách nguồn tin mặc định'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                          final confirmed = await showAppConfirmationDialog(
+                            context: context,
+                            type: AppConfirmationType.danger,
+                            icon: Icons.delete_sweep_rounded,
+                            title: 'Xóa toàn bộ nguồn tin?',
+                            description:
+                                'Bạn có chắc muốn xóa sạch tất cả nguồn tin RSS đã kết nối khỏi hệ thống không?',
+                            confirmText: 'Xóa sạch',
+                            cancelText: 'Hủy bỏ',
                           );
+                          if (confirmed == true && context.mounted) {
+                            await controller.restoreDefaultCategories();
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã xóa sạch danh sách nguồn tin RSS'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         },
                       ),
                     ),
@@ -283,64 +316,58 @@ class AdminCategoriesTab extends StatelessWidget {
                   final isPrimary = selectedCat.id == cat.id;
                   final color = _catColor(cat.id);
 
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color:
-                          isChecked ? color.withOpacity(0.06) : surfaceColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isChecked ? color : borderColor,
-                        width: isChecked ? 1.8 : 1.0,
-                      ),
-                      boxShadow: isChecked
-                          ? [
-                              BoxShadow(
-                                  color: color.withOpacity(0.12),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4))
-                            ]
-                          : [
-                              const BoxShadow(
-                                  color: Color(0x08000000),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2))
-                            ],
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () async {
-                        controller.toggleCategory(cat);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: [
-                                Icon(
-                                  controller.selectedCategoryIds.contains(cat.id)
-                                      ? Icons.check_circle_rounded
-                                      : Icons.remove_circle_outline_rounded,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    controller.selectedCategoryIds.contains(cat.id)
-                                        ? 'Đã bật kết nối "${cat.label}"'
-                                        : 'Đã tắt kết nối "${cat.label}"',
-                                  ),
-                                ),
+                  final isEnabled = cat.isEnabled;
+
+                  return Opacity(
+                    opacity: isEnabled ? 1.0 : 0.65,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: isEnabled
+                            ? (isChecked ? color.withOpacity(0.06) : surfaceColor)
+                            : surfaceColor.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isEnabled
+                              ? (isChecked ? color : borderColor)
+                              : borderColor.withOpacity(0.5),
+                          width: isChecked && isEnabled ? 1.8 : 1.0,
+                        ),
+                        boxShadow: isChecked && isEnabled
+                            ? [
+                                BoxShadow(
+                                    color: color.withOpacity(0.12),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4))
+                              ]
+                            : [
+                                const BoxShadow(
+                                    color: Color(0x08000000),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2))
                               ],
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () async {
+                          await controller.toggleCategoryEnabled(cat.id);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                !cat.isEnabled
+                                    ? 'Đã BẬT nguồn tin "${cat.label}"'
+                                    : 'Đã TẮT nguồn tin "${cat.label}"',
+                              ),
+                              backgroundColor: !cat.isEnabled
+                                  ? const Color(0xFF10B981)
+                                  : Colors.grey.shade700,
+                              duration: const Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
                             ),
-                            backgroundColor: color,
-                            duration: const Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
-                      },
+                          );
+                        },
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Row(
@@ -370,28 +397,28 @@ class AdminCategoriesTab extends StatelessWidget {
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 15,
-                                          color: isChecked ? color : textColor,
+                                          color: cat.isEnabled ? (isChecked ? color : textColor) : subTextColor,
                                         ),
                                       ),
-                                      if (isChecked) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 7, vertical: 2),
-                                          decoration: BoxDecoration(
-                                              color: color,
-                                              borderRadius:
-                                                  BorderRadius.circular(6)),
-                                          child: Text(
-                                              isPrimary
-                                                  ? 'CHÍNH'
-                                                  : 'ĐÃ KẾT NỐI',
-                                              style: const TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white)),
-                                        ),
-                                      ],
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                            color: cat.isEnabled
+                                                ? const Color(0xFF10B981)
+                                                : const Color(0xFF94A3B8),
+                                            borderRadius:
+                                                BorderRadius.circular(6)),
+                                        child: Text(
+                                            cat.isEnabled
+                                                ? 'ĐANG LẤY TIN'
+                                                : 'ĐÃ TẮT',
+                                            style: const TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white)),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 3),
@@ -511,27 +538,54 @@ class AdminCategoriesTab extends StatelessWidget {
                               },
                             ),
 
-                            // Checkbox
-                            const SizedBox(width: 4),
-                            Transform.scale(
-                              scale: 1.1,
-                              child: Checkbox(
-                                value: isChecked,
-                                activeColor: color,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
+                            // Công tắc BẬT / TẮT nguồn tin (Enable / Disable RSS)
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.scale(
+                                  scale: 0.82,
+                                  child: Switch.adaptive(
+                                    value: cat.isEnabled,
+                                    activeColor: const Color(0xFF10B981),
+                                    onChanged: (val) async {
+                                      await controller.toggleCategoryEnabled(cat.id);
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            val
+                                                ? 'Đã BẬT nguồn tin "${cat.label}"'
+                                                : 'Đã TẮT (tạm dừng) nguồn tin "${cat.label}"',
+                                          ),
+                                          backgroundColor: val
+                                              ? const Color(0xFF10B981)
+                                              : Colors.grey.shade700,
+                                          duration: const Duration(seconds: 1),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                                onChanged: (val) async {
-                                  controller.toggleCategorySelection(cat);
-                                },
-                              ),
+                                Text(
+                                  cat.isEnabled ? 'Đang bật' : 'Đã tắt',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: cat.isEnabled
+                                        ? const Color(0xFF10B981)
+                                        : subTextColor,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
+                  ),
+                );
+              }).toList(),
                 const SizedBox(height: 8),
               ],
             ),

@@ -6,12 +6,17 @@ import 'package:daily_news_weather_portal/services/weather_service.dart';
 import 'package:daily_news_weather_portal/features/favorites/providers/favorites_provider.dart';
 import 'package:daily_news_weather_portal/features/search/providers/search_provider.dart';
 import 'package:daily_news_weather_portal/features/auth/providers/auth_provider.dart';
+import 'package:daily_news_weather_portal/services/news_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('1. Auto-Merge & Deduplication Test (Khách lưu -> Đăng nhập gộp dữ liệu)', () {
-    test('Khách lưu 3 bài & 2 thành phố -> Đăng nhập tài khoản có 1 bài trùng + 1 bài mới: Gộp đúng, không trùng, xóa dữ liệu khách', () async {
+  group(
+      '1. Auto-Merge & Deduplication Test (Khách lưu -> Đăng nhập gộp dữ liệu)',
+      () {
+    test(
+        'Khách lưu 3 bài & 2 thành phố -> Đăng nhập tài khoản có 1 bài trùng + 1 bài mới: Gộp đúng, không trùng, xóa dữ liệu khách',
+        () async {
       const guestArticle1 = Article(
         id: 'art_1',
         title: 'Tin tức số 1 của Khách',
@@ -98,7 +103,8 @@ void main() {
       expect(prefs.getStringList('guest_favorite_articles'), isNull);
       expect(prefs.getStringList('guest_favorite_cities'), isNull);
 
-      final savedUserArticles = prefs.getStringList('favorite_articles_$testUid');
+      final savedUserArticles =
+          prefs.getStringList('favorite_articles_$testUid');
       expect(savedUserArticles != null && savedUserArticles.length == 4, true);
 
       final savedUserCities = prefs.getStringList('favorite_cities_$testUid');
@@ -107,7 +113,9 @@ void main() {
   });
 
   group('2. Deduplication Precision (Tiêu chí xác định trùng lặp)', () {
-    test('Bài viết: Nhận diện trùng theo URL chuẩn hóa (loại bỏ tracking params, trailing slash)', () {
+    test(
+        'Bài viết: Nhận diện trùng theo URL chuẩn hóa (loại bỏ tracking params, trailing slash)',
+        () {
       const a1 = Article(
         title: 'Tiêu đề A',
         link: 'https://vnexpress.net/giai-tri/phim-hay/',
@@ -116,7 +124,8 @@ void main() {
       );
       const a2 = Article(
         title: 'Tiêu đề A khác',
-        link: 'https://vnexpress.net/giai-tri/phim-hay?utm_source=facebook&utm_medium=cpc&ref=feed',
+        link:
+            'https://vnexpress.net/giai-tri/phim-hay?utm_source=facebook&utm_medium=cpc&ref=feed',
         description: '',
         source: 'VNExpress',
       );
@@ -132,14 +141,18 @@ void main() {
       expect(FavoritesProvider.isSameArticle(a1, a3), false);
     });
 
-    test('Thành phố: Trùng tên nhưng tọa độ cách xa (> 500km) coi là 2 thành phố khác nhau, không bị mất bài', () {
+    test(
+        'Thành phố: Trùng tên nhưng tọa độ cách xa (> 500km) coi là 2 thành phố khác nhau, không bị mất bài',
+        () {
       const cityA = City('An Phú', 10.7725, 105.0894);
       const cityB = City('An Phú', 21.4312, 104.9812);
 
       expect(FavoritesProvider.isSameCity(cityA, cityB), false);
     });
 
-    test('Thành phố: Cùng tọa độ (sai số < 2km) được coi là cùng một địa điểm dù tên viết hoa/thường lệch', () {
+    test(
+        'Thành phố: Cùng tọa độ (sai số < 2km) được coi là cùng một địa điểm dù tên viết hoa/thường lệch',
+        () {
       const city1 = City('Hà Nội', 21.0285, 105.8542);
       const city2 = City('ha noi', 21.0290, 105.8540);
 
@@ -147,8 +160,12 @@ void main() {
     });
   });
 
-  group('3. Search History Privacy Isolation (Cách ly lịch sử tìm kiếm theo tài khoản)', () {
-    test('Người A đăng xuất, Người B hoặc Khách đăng nhập không được thấy lịch sử của Người A', () async {
+  group(
+      '3. Search History Privacy Isolation (Cách ly lịch sử tìm kiếm theo tài khoản)',
+      () {
+    test(
+        'Người A đăng xuất, Người B hoặc Khách đăng nhập không được thấy lịch sử của Người A',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final searchProvider = SearchProvider();
 
@@ -172,16 +189,20 @@ void main() {
       expect(searchProvider.history.contains('thời tiết ngày mai'), false);
 
       await searchProvider.saveHistory('tin bóng đá ngoại hạng anh');
-      expect(searchProvider.history.contains('tin bóng đá ngoại hạng anh'), true);
+      expect(
+          searchProvider.history.contains('tin bóng đá ngoại hạng anh'), true);
 
       await searchProvider.updateUserContext('user_A');
       expect(searchProvider.history.contains('khám bệnh da liễu'), true);
-      expect(searchProvider.history.contains('tin bóng đá ngoại hạng anh'), false);
+      expect(
+          searchProvider.history.contains('tin bóng đá ngoại hạng anh'), false);
     });
   });
 
   group('4. Admin Security & Tampering Resistance Test', () {
-    test('Giả lập hacker sửa file SharedPreferences đổi session_is_admin=true với email thường: Hệ thống từ chối quyền Admin', () async {
+    test(
+        'Giả lập hacker sửa file SharedPreferences đổi session_is_admin=true với email thường: Hệ thống từ chối quyền Admin',
+        () async {
       SharedPreferences.setMockInitialValues({
         'session_is_logged_in': true,
         'session_is_admin': true,
@@ -195,17 +216,24 @@ void main() {
       expect(authProvider.isAdmin, false);
     });
 
-    test('Người dùng thường cố ý đăng ký email llinh0be@gmail.com: Hệ thống chặn ngay lập tức', () async {
+    test(
+        'Người dùng thường cố ý đăng ký email llinh0be@gmail.com: Hệ thống chặn ngay lập tức',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final authProvider = AuthProvider();
 
-      final registered = await authProvider.register('llinh0be@gmail.com', '123456', name: 'Fake Admin');
+      final registered = await authProvider
+          .register('llinh0be@gmail.com', '123456', name: 'Fake Admin');
       expect(registered, false);
       expect(authProvider.isAdmin, false);
-      expect(authProvider.errorMessage.contains('bảo lưu riêng cho Quản trị viên'), true);
+      expect(
+          authProvider.errorMessage.contains('bảo lưu riêng cho Quản trị viên'),
+          true);
     });
 
-    test('Chỉ tài khoản có email llinh0be@gmail.com mới được công nhận quyền Admin', () async {
+    test(
+        'Chỉ tài khoản có email llinh0be@gmail.com mới được công nhận quyền Admin',
+        () async {
       SharedPreferences.setMockInitialValues({
         'session_is_logged_in': true,
         'session_is_admin': true,
@@ -221,10 +249,13 @@ void main() {
   });
 
   group('5. Offline-first Resilience & Local Fallback Test', () {
-    test('Khi mất mạng / Firebase không kết nối: Bấm tim vẫn lưu an toàn vào cache máy mà không crash', () async {
+    test(
+        'Khi mất mạng / Firebase không kết nối: Bấm tim vẫn lưu an toàn vào cache máy mà không crash',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final favProvider = FavoritesProvider();
-      await favProvider.updateUserContext(isAuthenticated: true, uid: 'offline_user');
+      await favProvider.updateUserContext(
+          isAuthenticated: true, uid: 'offline_user');
 
       const article = Article(
         title: 'Tin tức đọc offline',
@@ -244,7 +275,8 @@ void main() {
       expect(favProvider.isFavoriteCity(city), true);
 
       final prefs = await SharedPreferences.getInstance();
-      final savedArticles = prefs.getStringList('favorite_articles_offline_user');
+      final savedArticles =
+          prefs.getStringList('favorite_articles_offline_user');
       final savedCities = prefs.getStringList('favorite_cities_offline_user');
 
       expect(savedArticles != null && savedArticles.isNotEmpty, true);
@@ -252,13 +284,18 @@ void main() {
     });
   });
 
-  group('6. Profile Privacy & Account Isolation Test (Mỗi tài khoản độc lập, không dùng chung thông tin cá nhân)', () {
-    test('Người dùng A cập nhật SĐT -> Đăng xuất -> Người dùng B / Google đăng nhập: Không bị rò rỉ SĐT hay Tên của A', () async {
+  group(
+      '6. Profile Privacy & Account Isolation Test (Mỗi tài khoản độc lập, không dùng chung thông tin cá nhân)',
+      () {
+    test(
+        'Người dùng A cập nhật SĐT -> Đăng xuất -> Người dùng B / Google đăng nhập: Không bị rò rỉ SĐT hay Tên của A',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final authProvider = AuthProvider();
 
       // 1. Tài khoản A đăng ký và cập nhật SĐT & Tên
-      final regA = await authProvider.register('usera@example.com', 'Pass123456', name: 'Người Dùng A');
+      final regA = await authProvider
+          .register('usera@example.com', 'Pass123456', name: 'Người Dùng A');
       expect(regA, true);
       expect(authProvider.displayName, 'Người Dùng A');
 
@@ -275,7 +312,9 @@ void main() {
       expect(authProvider.phoneNumber, '');
 
       // 3. Tài khoản B (hoặc tài khoản Google mới) đăng ký/đăng nhập
-      final regB = await authProvider.register('userb_google@gmail.com', 'PassB123456', name: 'Google User B');
+      final regB = await authProvider.register(
+          'userb_google@gmail.com', 'PassB123456',
+          name: 'Google User B');
       expect(regB, true);
 
       // Bắt buộc: Tài khoản B KHÔNG ĐƯỢC kế thừa SĐT hay Bio của A
@@ -289,19 +328,23 @@ void main() {
 
       // 5. B đăng xuất -> A đăng nhập lại: Mỗi tài khoản giữ nguyên thông tin riêng của mình
       await authProvider.signOut();
-      final loginA = await authProvider.signIn('usera@example.com', 'Pass123456');
+      final loginA =
+          await authProvider.signIn('usera@example.com', 'Pass123456');
       expect(loginA, true);
       expect(authProvider.displayName, 'Người Dùng A Chính Chủ');
       expect(authProvider.phoneNumber, '0912345678');
       expect(authProvider.bio, 'Bio của A');
     });
 
-    test('Xóa tài khoản: Dọn sạch hoàn toàn khỏi danh sách hệ thống, Admin không còn thấy tài khoản đã xóa', () async {
+    test(
+        'Xóa tài khoản: Dọn sạch hoàn toàn khỏi danh sách hệ thống, Admin không còn thấy tài khoản đã xóa',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final authProvider = AuthProvider();
 
       // Đăng ký tài khoản User X
-      await authProvider.register('userx@example.com', 'Pass123456', name: 'User X');
+      await authProvider.register('userx@example.com', 'Pass123456',
+          name: 'User X');
       var list = await authProvider.getRegisteredUsersList();
       expect(list.any((u) => u['email'] == 'userx@example.com'), true);
 
@@ -314,7 +357,8 @@ void main() {
       expect(list.any((u) => u['email'] == 'userx@example.com'), false);
     });
 
-    test('Quản trị viên xóa tài khoản người dùng trực tiếp qua Admin Panel', () async {
+    test('Quản trị viên xóa tài khoản người dùng trực tiếp qua Admin Panel',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final authProvider = AuthProvider();
 
@@ -323,18 +367,79 @@ void main() {
       expect(authProvider.isAdmin, true);
 
       // Giả lập hệ thống có 1 user thường
-      await authProvider.register('baduser@example.com', 'Pass123456', name: 'Bad User');
+      await authProvider.register('baduser@example.com', 'Pass123456',
+          name: 'Bad User');
       await authProvider.signInAsAdmin();
 
       var list = await authProvider.getRegisteredUsersList();
       expect(list.any((u) => u['email'] == 'baduser@example.com'), true);
 
       // Admin bấm xóa user
-      final adminDeleted = await authProvider.deleteUserByAdmin('baduser@example.com');
+      final adminDeleted =
+          await authProvider.deleteUserByAdmin('baduser@example.com');
       expect(adminDeleted, true);
 
       list = await authProvider.getRegisteredUsersList();
       expect(list.any((u) => u['email'] == 'baduser@example.com'), false);
+    });
+
+    test(
+        'HttpDateParser parse chuẩn xác năm 2 chữ số (Thanh Niên) và năm 4 chữ số (VnExpress, Tuổi Trẻ)',
+        () {
+      // 1. Thanh Niên dạng năm 2 chữ số '26' -> 2026
+      final tnDate = HttpDateParser.parse('Sat, 21 Nov 26 14:07:00 +0700');
+      expect(tnDate.year, 2026);
+      expect(tnDate.month, 11);
+      expect(tnDate.day, 21);
+
+      // 2. VnExpress dạng năm 4 chữ số '2026'
+      final vneDate = HttpDateParser.parse('Fri, 20 Nov 2026 15:30:00 +0700');
+      expect(vneDate.year, 2026);
+      expect(vneDate.month, 11);
+      expect(vneDate.day, 20);
+
+      // 3. Tuổi Trẻ dạng GMT
+      final ttDate = HttpDateParser.parse('Sat, 21 Nov 2026 07:15:22 GMT');
+      expect(ttDate.year, 2026);
+      expect(ttDate.month, 11);
+      expect(ttDate.day, 21);
+    });
+
+    test(
+        'Article.fromRssItem giải mã chuẩn xác ký tự HTML entities và hình ảnh',
+        () {
+      final article = Article.fromRssItem(
+        title:
+            'Th&#7911; t&#432;&#7899;ng ch&#7881; &#273;&#7841;o &amp; ph&#225;t bi&#7875;u &quot;N&oacute;ng&quot;',
+        link: 'https://tuoitre.vn/bai-viet-123.htm',
+        description:
+            '<a href="https://tuoitre.vn/bai-viet-123.htm"><img src="https://cdn.tuoitre.vn/image.jpg"/></a>N&#7897;i dung tin t&#7913;c',
+        source: 'Tuổi Trẻ',
+      );
+
+      // Kiểm tra giải mã ký tự tiếng Việt entity
+      expect(article.title.contains('&#'), false);
+      expect(article.title.contains('&amp;'), false);
+      expect(article.imageUrl, 'https://cdn.tuoitre.vn/image.jpg');
+    });
+
+    test(
+        'NewsCategory hỗ trợ cờ isEnabled và NewsService.categories khởi đầu rỗng',
+        () {
+      expect(NewsService.categories.isEmpty, true);
+
+      const cat = NewsCategory('tuoi-tre', 'Tuổi Trẻ',
+          'https://tuoitre.vn/rss/tin-moi-nhat.rss', 'Tuổi Trẻ');
+      expect(cat.isEnabled, true);
+
+      final toggled = cat.copyWith(isEnabled: false);
+      expect(toggled.isEnabled, false);
+
+      final json = toggled.toJson();
+      expect(json['isEnabled'], false);
+
+      final restored = NewsCategory.fromJson(json);
+      expect(restored.isEnabled, false);
     });
   });
 }

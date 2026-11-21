@@ -13,6 +13,14 @@ class NewsProvider extends ChangeNotifier {
   static const String _keyPendingTitles = 'news_pending_titles';
   static const String _keyDeletedTitles = 'news_deleted_titles';
 
+  /// Danh mục đại diện cho chế độ "Gom tất cả các nguồn tin"
+  static const NewsCategory allCategory = NewsCategory(
+    'all',
+    'Tất cả',
+    '',
+    'Tất cả nguồn',
+  );
+
   final INewsService _service;
   final IContentService _contentService;
 
@@ -20,7 +28,7 @@ class NewsProvider extends ChangeNotifier {
   String _errorMessage = '';
   List<NewsCategory> _categories = List.from(NewsService.categories);
   late NewsCategory _selectedCategory;
-  Set<String> _selectedCategoryIds = {'moi-nhat'};
+  Set<String> _selectedCategoryIds = {};
   List<Article> _articles = [];
   List<Article> _displayedArticles = [];
 
@@ -38,7 +46,21 @@ class NewsProvider extends ChangeNotifier {
   List<Article> get articles => _displayedArticles;
   List<Article> get allArticles => List.unmodifiable(_articles);
   int get totalArticlesCount => _articles.length;
-  List<NewsCategory> get categories => List.unmodifiable(_categories);
+
+  /// Toàn bộ danh mục / nguồn tin hiện có trong hệ thống (kể cả nguồn đã tắt)
+  List<NewsCategory> get allCategories => List.unmodifiable(_categories);
+
+  /// Chỉ các nguồn tin đang được BẬT lấy tin
+  List<NewsCategory> get categories =>
+      _categories.where((c) => c.isEnabled).toList();
+
+  /// Danh mục điều hướng cho giao diện người dùng (Bao gồm thẻ "Tất cả" ở đầu nếu có nguồn bật)
+  List<NewsCategory> get navigationCategories {
+    final enabled = categories;
+    if (enabled.isEmpty) return [];
+    return [allCategory, ...enabled];
+  }
+
   Set<String> get pendingArticleTitles => Set.unmodifiable(_pendingArticleTitles);
   Set<String> get deletedArticleTitles => Set.unmodifiable(_deletedArticleTitles);
   bool get hasMore => _displayedArticles.length < _getApprovedArticles().length;
@@ -48,7 +70,7 @@ class NewsProvider extends ChangeNotifier {
     IContentService? contentService,
   })  : _service = service ?? NewsService(),
         _contentService = contentService ?? ContentService() {
-    _selectedCategory = _categories.first;
+    _selectedCategory = allCategory;
     _initAndLoad();
   }
 
@@ -83,10 +105,14 @@ class NewsProvider extends ChangeNotifier {
         final filtered = savedSelected.where((id) => validIds.contains(id)).toSet();
         if (filtered.isNotEmpty) {
           _selectedCategoryIds = filtered;
-          _selectedCategory = _categories.firstWhere(
-            (c) => _selectedCategoryIds.contains(c.id),
-            orElse: () => _categories.first,
-          );
+          if (_selectedCategoryIds.length > 1 || _selectedCategoryIds.length == _categories.length) {
+            _selectedCategory = allCategory;
+          } else {
+            _selectedCategory = _categories.firstWhere(
+              (c) => _selectedCategoryIds.contains(c.id),
+              orElse: () => _categories.first,
+            );
+          }
         }
       }
 
@@ -192,22 +218,50 @@ class NewsProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Bật / Tắt trạng thái kích hoạt của 1 nguồn tin cụ thể
+  Future<void> toggleCategoryEnabled(String categoryId) async {
+    final index = _categories.indexWhere((c) => c.id == categoryId);
+    if (index == -1) return;
+
+    final current = _categories[index];
+    final updated = current.copyWith(isEnabled: !current.isEnabled);
+    _categories[index] = updated;
+
+    if (!updated.isEnabled) {
+      _selectedCategoryIds.remove(categoryId);
+    } else {
+      _selectedCategoryIds.add(categoryId);
+    }
+
+    final enabled = categories;
+    if (_selectedCategory.id == categoryId && !updated.isEnabled) {
+      _selectedCategory = enabled.isNotEmpty ? allCategory : allCategory;
+    }
+
+    await _saveCategories();
+    await _saveSelectedCategoryIds();
+    notifyListeners();
+    await fetchNews(forceRefresh: true);
+  }
+
   Future<void> deleteCategory(String categoryId) async {
     _categories.removeWhere((c) => c.id == categoryId);
     _selectedCategoryIds.remove(categoryId);
 
-    if (_categories.isEmpty) {
-      _categories = List.from(NewsService.categories);
-    }
-
-    if (_selectedCategoryIds.isEmpty) {
-      _selectedCategory = _categories.first;
-      _selectedCategoryIds = {_categories.first.id};
-    } else if (!_categories.any((c) => c.id == _selectedCategory.id)) {
-      _selectedCategory = _categories.firstWhere(
+    final enabled = categories;
+    if (enabled.isEmpty) {
+      _selectedCategory = allCategory;
+      _selectedCategoryIds = {};
+    } else if (_selectedCategoryIds.isEmpty) {
+      _selectedCategory = enabled.first;
+      _selectedCategoryIds = {enabled.first.id};
+    } else if (_selectedCategoryIds.length == 1) {
+      _selectedCategory = enabled.firstWhere(
         (c) => _selectedCategoryIds.contains(c.id),
-        orElse: () => _categories.first,
+        orElse: () => enabled.first,
       );
+    } else {
+      _selectedCategory = allCategory;
     }
 
     await _saveCategories();
@@ -216,9 +270,9 @@ class NewsProvider extends ChangeNotifier {
   }
 
   Future<void> restoreDefaultCategories() async {
-    _categories = List.from(NewsService.categories);
-    _selectedCategory = _categories.first;
-    _selectedCategoryIds = {_categories.first.id};
+    _categories = [];
+    _selectedCategory = allCategory;
+    _selectedCategoryIds = {};
     await _saveCategories();
     await _saveSelectedCategoryIds();
     await fetchNews(forceRefresh: true);
@@ -228,8 +282,23 @@ class NewsProvider extends ChangeNotifier {
   // CHỌN DANH MỤC & ĐỒNG BỘ
   // ─────────────────────────────────────────────────────────────
   Future<void> selectCategory(NewsCategory category) async {
+    final enabled = categories;
+    if (category.id == allCategory.id) {
+      if (_selectedCategory.id == allCategory.id &&
+          _selectedCategoryIds.length == enabled.length &&
+          _status == NewsStatus.success) {
+        return;
+      }
+      _selectedCategory = allCategory;
+      _selectedCategoryIds = enabled.map((c) => c.id).toSet();
+      await _saveSelectedCategoryIds();
+      await fetchNews();
+      return;
+    }
+
     if (_selectedCategoryIds.length == 1 &&
         _selectedCategoryIds.contains(category.id) &&
+        _selectedCategory.id == category.id &&
         _status == NewsStatus.success) {
       return;
     }
@@ -243,28 +312,40 @@ class NewsProvider extends ChangeNotifier {
     if (_selectedCategoryIds.contains(category.id)) {
       if (_selectedCategoryIds.length > 1) {
         _selectedCategoryIds.remove(category.id);
-        if (_selectedCategory.id == category.id) {
-          _selectedCategory = _categories.firstWhere(
+        if (_selectedCategoryIds.length == 1) {
+          _selectedCategory = categories.firstWhere(
             (c) => _selectedCategoryIds.contains(c.id),
-            orElse: () => _categories.first,
+            orElse: () => categories.isNotEmpty ? categories.first : allCategory,
           );
+        } else {
+          _selectedCategory = allCategory;
         }
       }
     } else {
       _selectedCategoryIds.add(category.id);
-      _selectedCategory = category;
+      if (_selectedCategoryIds.length == 1) {
+        _selectedCategory = category;
+      } else {
+        _selectedCategory = allCategory;
+      }
     }
     await _saveSelectedCategoryIds();
     await fetchNews();
   }
 
   Future<void> selectAllCategories() async {
-    _selectedCategoryIds = _categories.map((c) => c.id).toSet();
+    final enabled = categories;
+    _selectedCategory = allCategory;
+    _selectedCategoryIds = enabled.map((c) => c.id).toSet();
     await _saveSelectedCategoryIds();
     await fetchNews();
   }
 
   Future<void> resetToCategory(NewsCategory category) async {
+    if (category.id == allCategory.id) {
+      await selectAllCategories();
+      return;
+    }
     _selectedCategory = category;
     _selectedCategoryIds = {category.id};
     await _saveSelectedCategoryIds();
@@ -327,9 +408,10 @@ class NewsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final enabledCategories = _categories.where((c) => c.isEnabled).toList();
       final targetCategories = _selectedCategoryIds.isEmpty
-          ? [_selectedCategory]
-          : _categories
+          ? enabledCategories
+          : enabledCategories
               .where((c) => _selectedCategoryIds.contains(c.id))
               .toList();
 
@@ -355,7 +437,9 @@ class NewsProvider extends ChangeNotifier {
         ...backendArticles.where(
           (article) =>
               activeLabels.contains(article.category) ||
-              targetCategories.length > 1,
+              targetCategories.length > 1 ||
+              _selectedCategory.id == allCategory.id ||
+              targetCategories.isEmpty,
         ),
         ...fetchedRss,
       ];

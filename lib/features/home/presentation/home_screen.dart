@@ -1251,8 +1251,24 @@ class _HomeScreenState extends State<HomeScreen> {
     required NewsProvider newsProvider,
     required bool isDark,
   }) {
-    final categories = newsProvider.categories;
+    final categories = newsProvider.navigationCategories;
     final selectedCat = newsProvider.selectedCategory;
+
+    if (categories.isEmpty) {
+      return Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Chưa có nguồn tin nào được kết nối (Vào Admin để thêm nguồn RSS)',
+          style: TextStyle(
+            fontSize: 12.5,
+            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
 
     return SizedBox(
       height: 38,
@@ -1263,7 +1279,8 @@ class _HomeScreenState extends State<HomeScreen> {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final cat = categories[index];
-          final isSelected = cat.id == selectedCat.id;
+          final isSelected = cat.id == selectedCat.id ||
+              (cat.id == 'all' && selectedCat.id == 'all');
 
           return InkWell(
             onTap: () => newsProvider.selectCategory(cat),

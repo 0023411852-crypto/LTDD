@@ -158,20 +158,22 @@ class NewsListScreen extends StatelessWidget {
             ),
 
             // 2. THANH CHUYÊN MỤC DẠNG CUỘN NGANG (CATEGORY PILLS)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: SizedBox(
-                height: 38,
-                child: ListView.separated(
+            if (newsProvider.navigationCategories.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: SizedBox(
+                  height: 38,
+                  child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: newsProvider.categories.length,
+                  itemCount: newsProvider.navigationCategories.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
-                    final cat = newsProvider.categories[index];
+                    final cat = newsProvider.navigationCategories[index];
                     final isSelected =
-                        newsProvider.selectedCategory.id == cat.id;
+                        newsProvider.selectedCategory.id == cat.id ||
+                            (cat.id == 'all' && newsProvider.selectedCategory.id == 'all');
 
                     return InkWell(
                       onTap: () => newsProvider.selectCategory(cat),
@@ -279,6 +281,37 @@ class NewsListScreen extends StatelessWidget {
               FilledButton(
                 onPressed: () => provider.fetchNews(),
                 child: const Text('Thử lại'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (articles.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.feed_outlined, size: 54, color: subTextColor),
+              const SizedBox(height: 14),
+              Text(
+                'Chưa có tin tức nào',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Chưa có nguồn tin RSS nào được kết nối hoặc đang bật. Quản trị viên có thể vào Admin để thêm nguồn tin từ bên ngoài.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: subTextColor, height: 1.4),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: () => provider.fetchNews(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Làm mới'),
               ),
             ],
           ),

@@ -7,10 +7,14 @@ class AdminCategoriesController {
 
   AdminCategoriesController({required this.newsProvider});
 
-  List<NewsCategory> get categories => newsProvider.categories;
+  List<NewsCategory> get categories => newsProvider.allCategories;
   NewsCategory get selectedCategory => newsProvider.selectedCategory;
   Set<String> get selectedCategoryIds => newsProvider.selectedCategoryIds;
   bool get isLoading => newsProvider.status == NewsStatus.loading;
+
+  Future<void> toggleCategoryEnabled(String id) async {
+    await newsProvider.toggleCategoryEnabled(id);
+  }
 
   void selectCategory(NewsCategory category) {
     newsProvider.selectCategory(category);
