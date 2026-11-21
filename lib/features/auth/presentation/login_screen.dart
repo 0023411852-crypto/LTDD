@@ -364,8 +364,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       // ── App Title ──
                       Center(
                         child: Text(
-                          'Tin tức\n& Thời tiết',
+                          'Tin tức & Thời tiết',
                           textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 21,
                             fontWeight: FontWeight.w900,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/widgets/app_confirmation_dialog.dart';
@@ -562,47 +563,113 @@ class AdminNewsTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // URL Ảnh
-                _buildDialogLabel('URL Ảnh đại diện (thumbnail)'),
+                // URL / Chọn ảnh
+                _buildDialogLabel('Hình ảnh đại diện bài viết (Thumbnail)'),
                 const SizedBox(height: 6),
-                TextField(
-                  controller: imageUrlCtrl,
-                  keyboardType: TextInputType.url,
-                  decoration: _dialogInputDeco(
-                      'https://example.com/image.jpg', Icons.image_rounded),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: imageUrlCtrl,
+                        keyboardType: TextInputType.url,
+                        decoration: _dialogInputDeco(
+                          'Dán URL ảnh hoặc chọn từ máy...',
+                          Icons.image_rounded,
+                        ),
+                        onChanged: (_) => setModalState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () => _showImageSourcePicker(context, imageUrlCtrl, setModalState),
+                      icon: const Icon(Icons.add_a_photo_rounded, size: 18),
+                      label: const Text('Chọn ảnh'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1654F0),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                if (imageUrlCtrl.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: imageUrlCtrl.text.trim().startsWith('data:image')
+                            ? Image.memory(
+                                base64Decode(imageUrlCtrl.text.trim().split(',').last),
+                                height: 150,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildImageErrorBox(),
+                              )
+                            : Image.network(
+                                imageUrlCtrl.text.trim(),
+                                height: 150,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildImageErrorBox(),
+                              ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () {
+                            setModalState(() {
+                              imageUrlCtrl.clear();
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.65),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 12),
 
-                // Nội dung tóm tắt
-                _buildDialogLabel('Nội dung tóm tắt', isRequired: true),
+                // Nội dung bài viết chi tiết
+                _buildDialogLabel('Nội dung bài viết (Tự sáng tác / Chi tiết)', isRequired: true),
                 const SizedBox(height: 6),
                 TextField(
                   controller: descCtrl,
-                  maxLines: 3,
+                  maxLines: 6,
                   decoration: _dialogInputDeco(
-                      'Mô tả chi tiết nội dung tin tức...',
+                      'Viết toàn bộ nội dung bài báo, tin tức độc quyền hoặc phân tích chi tiết tại đây...',
                       Icons.notes_rounded),
                 ),
                 const SizedBox(height: 12),
 
                 // Nguồn / Tác giả
-                _buildDialogLabel('Nguồn / Tác giả'),
+                _buildDialogLabel('Tác giả / Nguồn tin'),
                 const SizedBox(height: 6),
                 TextField(
                   controller: authorCtrl,
                   decoration: _dialogInputDeco(
-                      'Ban Biên Tập, Tin Tức 24h...', Icons.person_rounded),
+                      'Tên tác giả, Ban Biên Tập, Tin Tức 24h...', Icons.person_rounded),
                 ),
                 const SizedBox(height: 12),
 
                 // Link bài gốc
-                _buildDialogLabel('Link bài viết gốc (tuỳ chọn)'),
+                _buildDialogLabel('Link bài viết gốc (Tuỳ chọn - Bỏ trống nếu là bài tự viết)'),
                 const SizedBox(height: 6),
                 TextField(
                   controller: linkCtrl,
                   keyboardType: TextInputType.url,
                   decoration: _dialogInputDeco(
-                      'https://vnexpress.net/...', Icons.link_rounded),
+                      'Bỏ trống nếu là bài tự viết, hoặc https://...', Icons.link_rounded),
                 ),
                 const SizedBox(height: 14),
 
@@ -689,7 +756,7 @@ class AdminNewsTab extends StatelessWidget {
                         : null;
                     final link = linkCtrl.text.trim().isNotEmpty
                         ? linkCtrl.text.trim()
-                        : 'https://news.google.com';
+                        : 'internal://article_${DateTime.now().millisecondsSinceEpoch}';
 
                     final DateTime? expiresAt = selectedRetentionDays > 0
                         ? DateTime.now().add(Duration(days: selectedRetentionDays))
@@ -793,6 +860,129 @@ class AdminNewsTab extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: borderColor),
       ),
+    );
+  }
+
+  Widget _buildImageErrorBox() {
+    return Container(
+      height: 140,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.broken_image_rounded, color: Colors.grey),
+            SizedBox(width: 8),
+            Text(
+              'Không thể xem trước ảnh. Vui lòng kiểm tra lại đường dẫn.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showImageSourcePicker(
+    BuildContext context,
+    TextEditingController controller,
+    StateSetter setModalState,
+  ) {
+    final sampleImages = [
+      {
+        'title': 'Thời sự & Xã hội',
+        'url': 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=800',
+        'icon': '📰',
+      },
+      {
+        'title': 'Công nghệ & AI',
+        'url': 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800',
+        'icon': '💻',
+      },
+      {
+        'title': 'Thời tiết & Dự báo',
+        'url': 'https://images.unsplash.com/photo-1516912481808-3406841bd33c?q=80&w=800',
+        'icon': '🌦️',
+      },
+      {
+        'title': 'Thể thao & Bóng đá',
+        'url': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
+        'icon': '⚽',
+      },
+      {
+        'title': 'Kinh doanh & Thị trường',
+        'url': 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=800',
+        'icon': '📈',
+      },
+      {
+        'title': 'Giải trí & Nghệ thuật',
+        'url': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=800',
+        'icon': '🎬',
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.photo_library_rounded, color: Color(0xFF1654F0)),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Chọn ảnh bài viết',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Chọn mẫu hình ảnh chất lượng cao theo chuyên mục:',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
+              const SizedBox(height: 10),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: sampleImages.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  itemBuilder: (context, i) {
+                    final item = sampleImages[i];
+                    return ListTile(
+                      leading: Text(item['icon']!, style: const TextStyle(fontSize: 24)),
+                      title: Text(item['title']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      trailing: const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF1654F0), size: 20),
+                      onTap: () {
+                        setModalState(() {
+                          controller.text = item['url']!;
+                        });
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

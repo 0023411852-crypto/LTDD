@@ -31,6 +31,12 @@ class Article {
     return DateTime.now().isAfter(expiresAt!);
   }
 
+  /// Kiểm tra xem bài viết do ban biên tập / admin tự sáng tác nội bộ hay lấy từ nguồn báo ngoài
+  bool get isInternal =>
+      link.startsWith('internal://') ||
+      link.isEmpty ||
+      (!link.startsWith('http://') && !link.startsWith('https://'));
+
   Article copyWith({
     String? id,
     String? title,

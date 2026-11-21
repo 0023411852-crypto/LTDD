@@ -375,7 +375,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            'Nguồn: ${widget.article.source}',
+                            widget.article.isInternal
+                                ? '✍️ Tác giả: ${widget.article.source}'
+                                : 'Nguồn: ${widget.article.source}',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 12,
@@ -482,16 +484,45 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   ],
                   const SizedBox(height: 28),
 
-                  // 6. Nút Đọc bài gốc (WebView)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton.tonalIcon(
-                      onPressed: _openOriginalArticle,
-                      icon: const Icon(Icons.open_in_browser_rounded),
-                      label: const Text('Đọc bài viết gốc tại trang báo'),
+                  // 6. Nút Đọc bài gốc (chỉ hiện đối với bài báo từ nguồn ngoài)
+                  if (!widget.article.isInternal) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _openOriginalArticle,
+                        icon: const Icon(Icons.open_in_browser_rounded),
+                        label: const Text('Đọc bài viết gốc tại trang báo'),
+                      ),
                     ),
-                  ),
+                  ] else ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: cs.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cs.primary.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.verified_rounded,
+                              color: cs.primary, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Bài viết độc quyền do Ban biên tập tự biên soạn trực tiếp.',
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
                 ],
               ),
@@ -531,11 +562,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         Icon(Icons.share_outlined, color: cs.onSurfaceVariant),
                     tooltip: 'Chia sẻ',
                   ),
-                  IconButton(
-                    onPressed: _openOriginalArticle,
-                    icon: Icon(Icons.public, color: cs.primary),
-                    tooltip: 'Đọc web',
-                  ),
+                  if (!widget.article.isInternal)
+                    IconButton(
+                      onPressed: _openOriginalArticle,
+                      icon: Icon(Icons.public, color: cs.primary),
+                      tooltip: 'Đọc web',
+                    ),
                 ],
               ),
             ),

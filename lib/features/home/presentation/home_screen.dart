@@ -12,6 +12,7 @@ import '../../favorites/providers/favorites_provider.dart';
 import '../../news/presentation/article_detail_screen.dart';
 import '../../news/providers/news_provider.dart';
 import '../../notifications/presentation/notifications_screen.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../../search/presentation/search_screen.dart';
 import '../../weather/presentation/weather_screen.dart';
 import '../../weather/presentation/widgets/animated_weather_visual.dart';
@@ -670,12 +671,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'DAILY PORTAL',
+                      'TIN TỨC & THỜI TIẾT',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.w900,
                         color: textColor,
-                        letterSpacing: 0.8,
+                        letterSpacing: 0.5,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -708,37 +709,43 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const SizedBox(width: 8),
-            Stack(
-              children: [
-                _buildFrostedIconButton(
-                  icon: Icons.notifications_none_rounded,
-                  isDark: isDark,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                Positioned(
-                  right: 9,
-                  top: 9,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                        width: 1.5,
-                      ),
+            Consumer<NotificationsProvider>(
+              builder: (context, notifProvider, _) {
+                final hasUnread = notifProvider.unreadCount > 0;
+                return Stack(
+                  children: [
+                    _buildFrostedIconButton(
+                      icon: Icons.notifications_none_rounded,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                ),
-              ],
+                    if (hasUnread)
+                      Positioned(
+                        right: 9,
+                        top: 9,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ],
         ),

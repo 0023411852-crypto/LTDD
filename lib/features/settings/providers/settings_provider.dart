@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -181,19 +182,34 @@ class SettingsProvider extends ChangeNotifier {
     _saveBool(_keyAutoDownload, value);
   }
 
-  void _calculateRealCacheSize() {
+  Future<void> _calculateRealCacheSize() async {
     try {
-      final cache = PaintingBinding.instance.imageCache;
-      final bytes = cache.currentSizeBytes;
-      final mb = bytes / (1024 * 1024);
-      if (mb > 0.1) {
-        _cacheSizeMB = mb;
-      } else {
-        _cacheSizeMB = (cache.currentSize * 0.45).clamp(3.2, 48.0);
-      }
+      double totalBytes = 0;
+
+      // 1. ImageCache trong bộ nhớ RAM
+      final imageCache = PaintingBinding.instance.imageCache;
+      totalBytes += imageCache.currentSizeBytes;
+
+      // 2. File tạm trong bộ nhớ đệm đĩa
+      try {
+        final tempDir = Directory.systemTemp;
+        if (await tempDir.exists()) {
+          await for (final entity in tempDir.list(recursive: true, followLinks: false)) {
+            if (entity is File) {
+              try {
+                totalBytes += await entity.length();
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (_) {}
+
+      final mb = totalBytes / (1024 * 1024);
+      _cacheSizeMB = mb > 0.05 ? mb : 0.0;
       notifyListeners();
     } catch (_) {
-      _cacheSizeMB = 12.5;
+      _cacheSizeMB = 0.0;
+      notifyListeners();
     }
   }
 
@@ -201,12 +217,32 @@ class SettingsProvider extends ChangeNotifier {
   Future<double> clearCache() async {
     final freed = _cacheSizeMB;
     try {
+      // 1. Xóa RAM Image Cache
       PaintingBinding.instance.imageCache.clear();
       PaintingBinding.instance.imageCache.clearLiveImages();
+
+      // 2. Xóa các tập tin đệm tạm thời trên đĩa
+      try {
+        final tempDir = Directory.systemTemp;
+        if (await tempDir.exists()) {
+          await for (final entity in tempDir.list(recursive: false)) {
+            try {
+              if (entity is File) {
+                await entity.delete();
+              } else if (entity is Directory) {
+                await entity.delete(recursive: true);
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
+
       _cacheSizeMB = 0.0;
       notifyListeners();
     } catch (e) {
       debugPrint('SettingsProvider.clearCache error: $e');
+      _cacheSizeMB = 0.0;
+      notifyListeners();
     }
     return freed;
   }

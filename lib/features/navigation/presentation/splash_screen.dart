@@ -183,12 +183,12 @@ class _SplashScreenState extends State<SplashScreen>
 
                   // App Name with modern typography
                   const Text(
-                    'DAILY PORTAL',
+                    'TIN TỨC & THỜI TIẾT',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
-                      fontSize: 28,
-                      letterSpacing: 2.0,
+                      fontSize: 24,
+                      letterSpacing: 1.0,
                     ),
                     textAlign: TextAlign.center,
                   ),

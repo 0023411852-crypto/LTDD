@@ -98,8 +98,11 @@ class ContentService implements IContentService {
       throw ArgumentError('Tiêu đề bài viết không được để trống.');
     }
     if (cleanLink.isEmpty ||
-        (!cleanLink.startsWith('https://') && !cleanLink.startsWith('http://'))) {
-      throw ArgumentError('Đường dẫn bài viết không hợp lệ (phải bắt đầu bằng http:// hoặc https://).');
+        (!cleanLink.startsWith('https://') &&
+            !cleanLink.startsWith('http://') &&
+            !cleanLink.startsWith('internal://'))) {
+      throw ArgumentError(
+          'Đường dẫn bài viết không hợp lệ (phải bắt đầu bằng http://, https:// hoặc internal://).');
     }
     if (cleanTitle.length > 500) {
       throw ArgumentError('Tiêu đề bài viết vượt quá giới hạn 500 ký tự.');

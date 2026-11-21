@@ -68,7 +68,7 @@ class WeatherProvider extends ChangeNotifier {
         'Không lấy được vị trí hiện tại trong thời gian cho phép.',
       );
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = _formatErrorMessage(e);
       _status = WeatherStatus.error;
     }
     notifyListeners();
@@ -108,9 +108,25 @@ class WeatherProvider extends ChangeNotifier {
       _weather = data;
       _status = WeatherStatus.success;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = _formatErrorMessage(e);
       _status = WeatherStatus.error;
     }
     notifyListeners();
+  }
+
+  String _formatErrorMessage(dynamic e) {
+    final str = e.toString();
+    if (str.contains('SocketException') ||
+        str.contains('SocketFailed') ||
+        str.contains('ClientException') ||
+        str.contains('No address associated with hostname') ||
+        str.contains('Failed host lookup') ||
+        str.contains('errno = 7')) {
+      return 'Không thể kết nối Internet. Vui lòng kiểm tra lại đường truyền mạng của bạn.';
+    }
+    if (str.contains('TimeoutException') || str.contains('timed out')) {
+      return 'Kết nối máy chủ thời tiết quá thời gian chờ (Timeout). Vui lòng thử lại.';
+    }
+    return str.replaceAll('Exception: ', '');
   }
 }

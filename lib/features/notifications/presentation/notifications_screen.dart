@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../models/app_notification.dart';
-import '../../../features/auth/providers/auth_provider.dart';
-import '../providers/notifications_provider.dart';
+import 'package:daily_news_weather_portal/models/app_notification.dart';
+import 'package:daily_news_weather_portal/models/article.dart';
+import 'package:daily_news_weather_portal/features/auth/providers/auth_provider.dart';
+import 'package:daily_news_weather_portal/features/news/presentation/article_detail_screen.dart';
+import 'package:daily_news_weather_portal/features/news/providers/news_provider.dart';
+import 'package:daily_news_weather_portal/features/weather/presentation/weather_screen.dart';
+import 'package:daily_news_weather_portal/features/notifications/providers/notifications_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -21,6 +25,55 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         context.read<NotificationsProvider>().load(auth.uid);
       }
     });
+  }
+
+  void _handleNotificationTap(
+    BuildContext context,
+    AppNotification item,
+    NotificationsProvider provider,
+  ) {
+    provider.markRead(item);
+
+    if (item.type == 'weather') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const WeatherScreen()),
+      );
+    } else {
+      final newsProvider = context.read<NewsProvider>();
+      final allArticles = newsProvider.allArticles;
+
+      Article? matchedArticle;
+      final cleanNotifTitle = item.title
+          .replaceAll('🔴 TIN NÓNG KHẨN CẤP: ', '')
+          .replaceAll('🔴 TIN NÓNG: ', '')
+          .trim();
+
+      for (final article in allArticles) {
+        if (article.title == cleanNotifTitle ||
+            cleanNotifTitle.contains(article.title) ||
+            article.title.contains(cleanNotifTitle)) {
+          matchedArticle = article;
+          break;
+        }
+      }
+
+      final targetArticle = matchedArticle ??
+          Article(
+            title: cleanNotifTitle,
+            link: 'https://vnexpress.net',
+            description: item.body,
+            source: 'Tin tức',
+            publishedAt: item.createdAt,
+          );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ArticleDetailScreen(article: targetArticle),
+        ),
+      );
+    }
   }
 
   @override
@@ -45,7 +98,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: !auth.isAuthenticated
-          ? _EmptyState(
+          ? const _EmptyState(
               icon: Icons.lock_outline_rounded,
               title: 'Đăng nhập để xem thông báo',
               subtitle: 'Thông báo cá nhân sẽ được đồng bộ trên các thiết bị.',
@@ -112,7 +165,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
     if (provider.notifications.isEmpty) {
-      return _EmptyState(
+      return const _EmptyState(
         icon: Icons.notifications_none_rounded,
         title: 'Chưa có thông báo',
         subtitle: 'Các cập nhật mới sẽ xuất hiện tại đây.',
@@ -129,7 +182,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final item = provider.notifications[index];
           return _NotificationCard(
             notification: item,
-            onTap: () => provider.markRead(item),
+            onTap: () => _handleNotificationTap(context, item, provider),
             colorScheme: cs,
           );
         },
