@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/admin/providers/admin_provider.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/favorites/providers/favorites_provider.dart';
 import 'features/home/providers/home_provider.dart';
@@ -58,7 +57,6 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => HomeProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
-        ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: const DailyNewsApp(),

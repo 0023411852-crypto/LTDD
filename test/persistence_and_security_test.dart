@@ -12,21 +12,21 @@ void main() {
 
   group('1. Auto-Merge & Deduplication Test (Khách lưu -> Đăng nhập gộp dữ liệu)', () {
     test('Khách lưu 3 bài & 2 thành phố -> Đăng nhập tài khoản có 1 bài trùng + 1 bài mới: Gộp đúng, không trùng, xóa dữ liệu khách', () async {
-      final guestArticle1 = const Article(
+      const guestArticle1 = Article(
         id: 'art_1',
         title: 'Tin tức số 1 của Khách',
         link: 'https://vnexpress.net/tin-1',
         description: 'Mô tả 1',
         source: 'VNExpress',
       );
-      final guestArticle2 = const Article(
+      const guestArticle2 = Article(
         id: 'art_2',
         title: 'Tin tức số 2 của Khách',
         link: 'https://vnexpress.net/tin-2',
         description: 'Mô tả 2',
         source: 'VNExpress',
       );
-      final guestArticle3 = const Article(
+      const guestArticle3 = Article(
         id: 'art_3',
         title: 'Tin tức số 3 của Khách (sẽ bị trùng với User)',
         link: 'https://vnexpress.net/tin-trung',
@@ -34,17 +34,17 @@ void main() {
         source: 'VNExpress',
       );
 
-      final guestCity1 = const City('Đà Nẵng', 16.0544, 108.2022);
-      final guestCity2 = const City('Cần Thơ', 10.0452, 105.7469);
+      const guestCity1 = City('Đà Nẵng', 16.0544, 108.2022);
+      const guestCity2 = City('Cần Thơ', 10.0452, 105.7469);
 
-      final userArticleDuplicate = const Article(
+      const userArticleDuplicate = Article(
         id: 'art_3_user',
         title: 'Tin trùng đã có sẵn trên tài khoản',
         link: 'https://vnexpress.net/tin-trung',
         description: 'Mô tả trên user',
         source: 'VNExpress',
       );
-      final userArticleUnique = const Article(
+      const userArticleUnique = Article(
         id: 'art_4',
         title: 'Tin riêng chỉ có ở User',
         link: 'https://vnexpress.net/tin-user-rieng',
@@ -52,8 +52,8 @@ void main() {
         source: 'VNExpress',
       );
 
-      final userCityDuplicate = const City('Đà Nẵng', 16.0544, 108.2022);
-      final userCityUnique = const City('Hà Nội', 21.0285, 105.8542);
+      const userCityDuplicate = City('Đà Nẵng', 16.0544, 108.2022);
+      const userCityUnique = City('Hà Nội', 21.0285, 105.8542);
 
       const testUid = 'user_audit_test_999';
 
@@ -108,13 +108,13 @@ void main() {
 
   group('2. Deduplication Precision (Tiêu chí xác định trùng lặp)', () {
     test('Bài viết: Nhận diện trùng theo URL chuẩn hóa (loại bỏ tracking params, trailing slash)', () {
-      final a1 = const Article(
+      const a1 = Article(
         title: 'Tiêu đề A',
         link: 'https://vnexpress.net/giai-tri/phim-hay/',
         description: '',
         source: 'VNExpress',
       );
-      final a2 = const Article(
+      const a2 = Article(
         title: 'Tiêu đề A khác',
         link: 'https://vnexpress.net/giai-tri/phim-hay?utm_source=facebook&utm_medium=cpc&ref=feed',
         description: '',
@@ -123,7 +123,7 @@ void main() {
 
       expect(FavoritesProvider.isSameArticle(a1, a2), true);
 
-      final a3 = const Article(
+      const a3 = Article(
         title: 'Bài khác',
         link: 'https://vnexpress.net/the-thao/bong-da',
         description: '',
@@ -133,15 +133,15 @@ void main() {
     });
 
     test('Thành phố: Trùng tên nhưng tọa độ cách xa (> 500km) coi là 2 thành phố khác nhau, không bị mất bài', () {
-      final cityA = const City('An Phú', 10.7725, 105.0894);
-      final cityB = const City('An Phú', 21.4312, 104.9812);
+      const cityA = City('An Phú', 10.7725, 105.0894);
+      const cityB = City('An Phú', 21.4312, 104.9812);
 
       expect(FavoritesProvider.isSameCity(cityA, cityB), false);
     });
 
     test('Thành phố: Cùng tọa độ (sai số < 2km) được coi là cùng một địa điểm dù tên viết hoa/thường lệch', () {
-      final city1 = const City('Hà Nội', 21.0285, 105.8542);
-      final city2 = const City('ha noi', 21.0290, 105.8540);
+      const city1 = City('Hà Nội', 21.0285, 105.8542);
+      const city2 = City('ha noi', 21.0290, 105.8540);
 
       expect(FavoritesProvider.isSameCity(city1, city2), true);
     });
@@ -226,14 +226,14 @@ void main() {
       final favProvider = FavoritesProvider();
       await favProvider.updateUserContext(isAuthenticated: true, uid: 'offline_user');
 
-      final article = const Article(
+      const article = Article(
         title: 'Tin tức đọc offline',
         link: 'https://vnexpress.net/offline-reading',
         description: 'Mô tả offline',
         source: 'VNExpress',
       );
 
-      final city = const City('Hải Phòng', 20.8449, 106.6881);
+      const city = City('Hải Phòng', 20.8449, 106.6881);
 
       final articleSuccess = await favProvider.toggleFavorite(article);
       final citySuccess = await favProvider.toggleFavoriteCity(city);

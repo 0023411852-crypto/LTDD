@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/widgets/app_confirmation_dialog.dart';
 import '../../admin/presentation/admin_panel_screen.dart';
+import '../../admin/providers/admin_provider.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../favorites/presentation/favorites_screen.dart';
@@ -196,7 +197,10 @@ class ProfileScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AdminPanelScreen(),
+                          builder: (_) => ChangeNotifierProvider(
+                            create: (_) => AdminProvider(),
+                            child: const AdminPanelScreen(),
+                          ),
                         ),
                       );
                     },
