@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -218,12 +219,21 @@ class NewsProvider extends ChangeNotifier {
     return true;
   }
 
-  /// Bật / Tắt trạng thái kích hoạt của 1 nguồn tin cụ thể
-  Future<void> toggleCategoryEnabled(String categoryId) async {
+  /// Bật / Tắt trạng thái kích hoạt của 1 nguồn tin cụ thể.
+  /// Trả về false nếu cố tắt nguồn cuối cùng (để luôn duy trì ít nhất 1 nguồn hoạt động).
+  Future<bool> toggleCategoryEnabled(String categoryId) async {
     final index = _categories.indexWhere((c) => c.id == categoryId);
-    if (index == -1) return;
+    if (index == -1) return false;
 
     final current = _categories[index];
+    // Nếu đang bật và người dùng muốn tắt: kiểm tra xem có phải nguồn bật duy nhất không
+    if (current.isEnabled) {
+      final enabledCount = _categories.where((c) => c.isEnabled).length;
+      if (enabledCount <= 1) {
+        return false; // Ngăn chặn tắt sạch nguồn, phải giữ lại ít nhất 1 nguồn
+      }
+    }
+
     final updated = current.copyWith(isEnabled: !current.isEnabled);
     _categories[index] = updated;
 
@@ -235,13 +245,49 @@ class NewsProvider extends ChangeNotifier {
 
     final enabled = categories;
     if (_selectedCategory.id == categoryId && !updated.isEnabled) {
-      _selectedCategory = enabled.isNotEmpty ? allCategory : allCategory;
+      _selectedCategory = enabled.isNotEmpty ? enabled.first : allCategory;
+    } else if (updated.isEnabled && _selectedCategoryIds.length == enabled.length) {
+      _selectedCategory = allCategory;
     }
 
     await _saveCategories();
     await _saveSelectedCategoryIds();
     notifyListeners();
-    await fetchNews(forceRefresh: true);
+    // Chạy tải dữ liệu ngầm không chặn luồng giao diện (non-blocking)
+    unawaited(fetchNews(forceRefresh: true));
+    return true;
+  }
+
+  /// Đồng bộ bật / tắt tất cả nguồn tin:
+  /// - Nếu chưa bật tất cả: Bật tất cả các nguồn (all enabled).
+  /// - Nếu đang bật tất cả: Tắt các nguồn khác, chừa lại 1 nguồn duy nhất (nguồn đầu tiên).
+  Future<bool> toggleAllCategoriesEnabled() async {
+    if (_categories.isEmpty) return false;
+
+    final allEnabled = _categories.every((c) => c.isEnabled);
+    if (allEnabled) {
+      // Đang bật tất cả -> Tắt bớt các nguồn, giữ lại duy nhất nguồn đầu tiên
+      final first = _categories.first;
+      for (int i = 0; i < _categories.length; i++) {
+        _categories[i] = _categories[i].copyWith(isEnabled: i == 0);
+      }
+      _selectedCategory = first;
+      _selectedCategoryIds = {first.id};
+    } else {
+      // Chưa bật hết -> Bật toàn bộ tất cả các nguồn
+      for (int i = 0; i < _categories.length; i++) {
+        _categories[i] = _categories[i].copyWith(isEnabled: true);
+      }
+      _selectedCategory = allCategory;
+      _selectedCategoryIds = _categories.map((c) => c.id).toSet();
+    }
+
+    await _saveCategories();
+    await _saveSelectedCategoryIds();
+    notifyListeners();
+    // Chạy tải dữ liệu ngầm không chặn luồng giao diện (non-blocking)
+    unawaited(fetchNews(forceRefresh: true));
+    return !allEnabled; // Trả về true nếu vừa BẬT TẤT CẢ, false nếu vừa TẮT CHỪA 1 NGUỒN
   }
 
   Future<void> deleteCategory(String categoryId) async {

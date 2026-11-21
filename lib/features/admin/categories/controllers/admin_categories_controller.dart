@@ -12,8 +12,12 @@ class AdminCategoriesController {
   Set<String> get selectedCategoryIds => newsProvider.selectedCategoryIds;
   bool get isLoading => newsProvider.status == NewsStatus.loading;
 
-  Future<void> toggleCategoryEnabled(String id) async {
-    await newsProvider.toggleCategoryEnabled(id);
+  Future<bool> toggleCategoryEnabled(String id) async {
+    return await newsProvider.toggleCategoryEnabled(id);
+  }
+
+  Future<bool> toggleAllCategoriesEnabled() async {
+    return await newsProvider.toggleAllCategoriesEnabled();
   }
 
   void selectCategory(NewsCategory category) {

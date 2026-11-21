@@ -80,6 +80,7 @@ class AdminCategoriesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final categories = controller.categories;
     final selectedCat = controller.selectedCategory;
     final selectedCatIds = controller.selectedCategoryIds;
@@ -254,59 +255,78 @@ class AdminCategoriesTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          side: BorderSide(
-                              color: selectedCatIds.length == categories.length
-                                  ? const Color(0xFF1654F0)
-                                  : borderColor),
-                          backgroundColor:
-                              selectedCatIds.length == categories.length
-                                  ? const Color(0xFF1654F0).withOpacity(0.08)
-                                  : surfaceColor,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: Icon(
-                          selectedCatIds.length == categories.length
-                              ? Icons.check_circle_rounded
-                              : Icons.select_all_rounded,
-                          size: 17,
-                          color: const Color(0xFF1654F0),
-                        ),
-                        label: Text(
-                          selectedCatIds.length == categories.length
-                              ? 'Đang gom tất cả nguồn'
-                              : 'Chọn tất cả (${categories.length})',
-                          style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1654F0)),
-                        ),
-                        onPressed: () async {
-                          if (selectedCatIds.length == categories.length) {
-                            controller.selectCategory(categories.first);
-                          } else {
-                            controller.selectAllCategories();
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                selectedCatIds.length == categories.length
-                                    ? 'Đã đưa về chuyên mục đầu tiên'
-                                    : 'Đã chọn đồng bộ tất cả chuyên mục!',
+                Builder(
+                  builder: (context) {
+                    final allEnabled = categories.isNotEmpty &&
+                        categories.every((c) => c.isEnabled);
+                    final enabledCount =
+                        categories.where((c) => c.isEnabled).length;
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                              side: BorderSide(
+                                color: allEnabled
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF1654F0),
+                                width: 1.2,
                               ),
-                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: allEnabled
+                                  ? const Color(0xFF10B981).withOpacity(0.08)
+                                  : const Color(0xFF1654F0).withOpacity(0.06),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                            icon: Icon(
+                              allEnabled
+                                  ? Icons.check_circle_rounded
+                                  : Icons.select_all_rounded,
+                              size: 18,
+                              color: allEnabled
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF1654F0),
+                            ),
+                            label: Text(
+                              allEnabled
+                                  ? 'Đang bật tất cả (${categories.length}) • Bấm tắt chừa 1 nguồn'
+                                  : 'Chọn bật tất cả ($enabledCount/${categories.length} đang bật)',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: allEnabled
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF1654F0),
+                              ),
+                            ),
+                            onPressed: categories.isEmpty
+                                ? null
+                                : () async {
+                                    final turnedAllOn = await controller
+                                        .toggleAllCategoriesEnabled();
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          turnedAllOn
+                                              ? 'Đã BẬT TẤT CẢ ${categories.length} nguồn tin RSS!'
+                                              : 'Đã tắt các nguồn khác, giữ lại 1 nguồn: "${categories.first.label}"!',
+                                        ),
+                                        backgroundColor: turnedAllOn
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFF1E60F2),
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
 
@@ -324,35 +344,39 @@ class AdminCategoriesTab extends StatelessWidget {
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: isEnabled
-                            ? (isChecked ? color.withOpacity(0.06) : surfaceColor)
-                            : surfaceColor.withOpacity(0.5),
+                        color: isEnabled ? surfaceColor : surfaceColor.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isEnabled
-                              ? (isChecked ? color : borderColor)
+                              ? (isChecked ? const Color(0xFF1E60F2) : borderColor)
                               : borderColor.withOpacity(0.5),
-                          width: isChecked && isEnabled ? 1.8 : 1.0,
+                          width: isChecked && isEnabled ? 1.5 : 1.0,
                         ),
-                        boxShadow: isChecked && isEnabled
+                        boxShadow: isEnabled
                             ? [
-                                BoxShadow(
-                                    color: color.withOpacity(0.12),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4))
-                              ]
-                            : [
                                 const BoxShadow(
                                     color: Color(0x08000000),
-                                    blurRadius: 4,
+                                    blurRadius: 6,
                                     offset: Offset(0, 2))
-                              ],
+                              ]
+                            : null,
                       ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
                         onTap: () async {
-                          await controller.toggleCategoryEnabled(cat.id);
+                          final success = await controller.toggleCategoryEnabled(cat.id);
                           if (!context.mounted) return;
+                          if (!success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Hệ thống cần duy trì ít nhất 1 nguồn tin hoạt động!'),
+                                backgroundColor: Color(0xFFF59E0B),
+                                duration: Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -542,20 +566,51 @@ class AdminCategoriesTab extends StatelessWidget {
                             Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Transform.scale(
-                                  scale: 0.82,
-                                  child: Switch.adaptive(
+                                SizedBox(
+                                  height: 30,
+                                  child: Switch(
                                     value: cat.isEnabled,
-                                    activeColor: const Color(0xFF10B981),
+                                    thumbColor:
+                                        WidgetStateProperty.resolveWith<Color>(
+                                            (states) => Colors.white),
+                                    trackColor:
+                                        WidgetStateProperty.resolveWith<Color>(
+                                      (states) {
+                                        if (states
+                                            .contains(WidgetState.selected)) {
+                                          return const Color(0xFF10B981);
+                                        }
+                                        return isDark
+                                            ? const Color(0xFF334155)
+                                            : const Color(0xFFCBD5E1);
+                                      },
+                                    ),
+                                    trackOutlineColor:
+                                        WidgetStateProperty.all(Colors.transparent),
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                     onChanged: (val) async {
-                                      await controller.toggleCategoryEnabled(cat.id);
+                                      final success = await controller
+                                          .toggleCategoryEnabled(cat.id);
                                       if (!context.mounted) return;
+                                      if (!success) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                'Hệ thống cần duy trì ít nhất 1 nguồn tin hoạt động!'),
+                                            backgroundColor: Color(0xFFF59E0B),
+                                            duration: Duration(seconds: 2),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                        return;
+                                      }
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             val
                                                 ? 'Đã BẬT nguồn tin "${cat.label}"'
-                                                : 'Đã TẮT (tạm dừng) nguồn tin "${cat.label}"',
+                                                : 'Đã TẮT nguồn tin "${cat.label}"',
                                           ),
                                           backgroundColor: val
                                               ? const Color(0xFF10B981)
@@ -567,11 +622,12 @@ class AdminCategoriesTab extends StatelessWidget {
                                     },
                                   ),
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
                                   cat.isEnabled ? 'Đang bật' : 'Đã tắt',
                                   style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
                                     color: cat.isEnabled
                                         ? const Color(0xFF10B981)
                                         : subTextColor,

@@ -7,6 +7,14 @@ import 'package:daily_news_weather_portal/features/favorites/providers/favorites
 import 'package:daily_news_weather_portal/features/search/providers/search_provider.dart';
 import 'package:daily_news_weather_portal/features/auth/providers/auth_provider.dart';
 import 'package:daily_news_weather_portal/services/news_service.dart';
+import 'package:daily_news_weather_portal/features/news/providers/news_provider.dart';
+
+class MockNewsService implements INewsService {
+  @override
+  Future<List<Article>> fetchCategory(NewsCategory category, {bool forceRefresh = false}) async {
+    return [];
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -440,6 +448,44 @@ void main() {
 
       final restored = NewsCategory.fromJson(json);
       expect(restored.isEnabled, false);
+    });
+
+    test('NewsProvider toggleAllCategoriesEnabled và bảo vệ giữ lại ít nhất 1 nguồn', () async {
+      final mockService = MockNewsService();
+      final provider = NewsProvider(service: mockService);
+
+      // Thêm 2 nguồn tin test
+      await provider.addCategory(
+        label: 'Nguồn 1',
+        rssUrl: 'https://test1.vn/rss',
+        source: 'Test 1',
+      );
+      await provider.addCategory(
+        label: 'Nguồn 2',
+        rssUrl: 'https://test2.vn/rss',
+        source: 'Test 2',
+      );
+
+      expect(provider.allCategories.length, 2);
+      expect(provider.allCategories.every((c) => c.isEnabled), true);
+
+      // Bấm toggleAllCategoriesEnabled khi cả 2 đang bật -> Tắt nguồn 2, giữ lại nguồn 1
+      final result1 = await provider.toggleAllCategoriesEnabled();
+      expect(result1, false); // Vừa tắt chừa 1 nguồn
+      expect(provider.allCategories[0].isEnabled, true);
+      expect(provider.allCategories[1].isEnabled, false);
+      expect(provider.categories.length, 1);
+
+      // Cố tình tắt nguồn 1 khi nó là nguồn duy nhất còn lại -> Phải trả về false và không tắt
+      final toggleLastResult = await provider.toggleCategoryEnabled(provider.allCategories[0].id);
+      expect(toggleLastResult, false);
+      expect(provider.allCategories[0].isEnabled, true); // Vẫn bật
+
+      // Bấm toggleAllCategoriesEnabled lại -> Bật cả 2
+      final result2 = await provider.toggleAllCategoriesEnabled();
+      expect(result2, true); // Vừa bật tất cả
+      expect(provider.allCategories.every((c) => c.isEnabled), true);
+      expect(provider.categories.length, 2);
     });
   });
 }
